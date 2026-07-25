@@ -20,6 +20,7 @@ import {
   getRootSidebarNodes,
   getRootSidebarSelectedNode,
   getSidebarProfileState,
+  focusWithoutAutoScroll,
   isSelectedSidebarAction,
   isRootSidebarNode,
   renderRootSidebar,
@@ -306,7 +307,7 @@ export const LibraryScreen = {
       }
     });
     target.classList.add("focused");
-    target.focus();
+    focusWithoutAutoScroll(target);
     const sidebarFocused = this.isSidebarNode(target);
     this.focusZone = sidebarFocused ? "sidebar" : "content";
     if (!this.layoutPrefs?.modernSidebar) {

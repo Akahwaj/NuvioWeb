@@ -12311,9 +12311,9 @@ html.legacy-webos .debug-console-log-frame {
 .player-skip-intro-btn.focused,
 .player-skip-intro-btn:focus,
 .player-skip-intro:focus-within .player-skip-intro-btn {
-  background: var(--secondary-color) !important;
-  color: var(--on-secondary) !important;
-  box-shadow: none;
+  background: var(--player-focus-background) !important;
+  color: var(--player-text-primary) !important;
+  box-shadow: 0 0 0 4px var(--player-focus-ring);
 }
 
 .player-skip-intro-content {
@@ -15574,8 +15574,8 @@ html.legacy-webos .debug-console-log-frame {
 }
 
 .series-primary-btn.focused {
-  background: #ffffff;
-  color: #000000;
+  background: var(--focus-bg);
+  color: var(--text-color);
   box-shadow: 0 0 0 4px var(--detail-focus-ring);
   transform: none;
 }
@@ -17262,9 +17262,9 @@ html.legacy-webos .debug-console-log-frame {
 .legacy-webos .player-skip-intro-btn.focused,
 .legacy-webos .player-skip-intro-btn:focus,
 .legacy-webos .player-skip-intro:focus-within .player-skip-intro-btn {
-  background: var(--secondary-color) !important;
-  color: var(--on-secondary) !important;
-  box-shadow: none;
+  background: var(--player-focus-background) !important;
+  color: var(--player-text-primary) !important;
+  box-shadow: 0 0 0 4px var(--player-focus-ring);
 }
 
 .legacy-webos .player-next-episode-card {
@@ -18703,9 +18703,9 @@ html.legacy-webos .debug-console-log-frame {
   .player-skip-intro-btn.focused,
   .player-skip-intro-btn:focus,
   .player-skip-intro:focus-within .player-skip-intro-btn {
-    background: var(--secondary-color) !important;
-    color: var(--on-secondary) !important;
-    box-shadow: none;
+    background: var(--player-focus-background) !important;
+    color: var(--player-text-primary) !important;
+    box-shadow: 0 0 0 4px var(--player-focus-ring);
   }
 
   .player-next-episode-card {
@@ -20171,8 +20171,8 @@ html.legacy-webos .debug-console-log-frame {
 }
 
 .series-primary-btn.focused {
-  background: #ffffff;
-  color: #000000;
+  background: var(--focus-bg);
+  color: var(--text-color);
   border-color: var(--detail-focus-ring);
   transform: none;
 }

@@ -7,6 +7,10 @@ import {
   getAudioTrackLabelPrefix,
   mapAudioTrackNativeIndexes
 } from "../../../core/player/audioTrackCodecMetadata.js";
+import {
+  canReleasePlayingNativeStartupAudioGate,
+  selectStartupAudioFallbackOption
+} from "../../../core/player/startupAudioGatePolicy.js";
 import { resolveSubtitleStyleControlAvailability } from "../../../core/player/subtitlePresentationCapabilities.js";
 import {
   ensureWebOsImageProxyReady,
@@ -2986,16 +2990,20 @@ export const PlayerScreen = {
     }
 
     const rootStyle = getComputedStyle(document.documentElement);
-    const accent = rootStyle.getPropertyValue("--secondary-color").trim() || "#f5f5f5";
-    const onAccent = rootStyle.getPropertyValue("--on-secondary").trim() || "#111111";
+    const focusBackground =
+      rootStyle.getPropertyValue("--player-focus-background").trim() || "#303030";
+    const focusContent =
+      rootStyle.getPropertyValue("--player-text-primary").trim() || "#ffffff";
+    const focusRing = rootStyle.getPropertyValue("--player-focus-ring").trim() || "#ffffff";
     const isFocused = document.activeElement === target || target.classList.contains("focused");
-    const background = isFocused ? accent : "rgba(30, 30, 30, 0.85)";
-    const color = isFocused ? onAccent : "#fff";
+    const background = isFocused ? focusBackground : "rgba(30, 30, 30, 0.85)";
+    const color = isFocused ? focusContent : "#fff";
+    const boxShadow = isFocused ? `0 0 0 4px ${focusRing}` : "none";
 
     target.style.setProperty("background", background, "important");
     target.style.setProperty("background-color", background, "important");
     target.style.setProperty("color", color, "important");
-    target.style.setProperty("box-shadow", "none", "important");
+    target.style.setProperty("box-shadow", boxShadow, "important");
 
     const icon = target.querySelector(".player-skip-intro-icon");
     const label = target.querySelector(".player-skip-intro-label");
@@ -8472,6 +8480,18 @@ export const PlayerScreen = {
       : Number(PlayerController.video?.readyState || 0);
     const gateDeadlineExpired = Number(this.startupAudioGateDeadline || 0) > 0
       && Date.now() >= Number(this.startupAudioGateDeadline || 0);
+    if (canReleasePlayingNativeStartupAudioGate({
+      allowNativePlayback: this.startupAudioGateAllowsNativePlayback,
+      hasPresentedPlaybackFrame: this.hasPresentedPlaybackFrame,
+      pendingAudioSelection: Boolean(this.pendingWebOsAudioSelection),
+      readyState
+    })) {
+      if (!this.startupAudioPreferenceApplied) {
+        this.applyStartupAudioFallback();
+      }
+      return Boolean(this.startupAudioPreferenceApplied)
+        && !this.pendingWebOsAudioSelection;
+    }
     if (gateDeadlineExpired && !this.pendingWebOsAudioSelection) {
       if (!this.startupAudioPreferenceApplied) {
         this.applyStartupAudioFallback();
@@ -12725,7 +12745,7 @@ export const PlayerScreen = {
   applyStartupAudioFallback() {
     this.clearStartupAudioPreferenceRetry();
     this.startupAudioFallbackApplied = true;
-    const fallbackOption = this.collectAudioOptionItems().find((entry) => entry.supported);
+    const fallbackOption = selectStartupAudioFallbackOption(this.collectAudioOptionItems());
     if (!fallbackOption?.entry || !Number.isFinite(fallbackOption.entryIndex)) {
       this.startupAudioPreferenceApplied = true;
       return true;
