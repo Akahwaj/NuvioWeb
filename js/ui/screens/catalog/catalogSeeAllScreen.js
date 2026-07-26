@@ -15,6 +15,7 @@ import {
   isTitleItemWatched,
   renderTitleWatchedBadge
 } from "../../components/watchedTitleBadge.js";
+import { renderLoadingIndicator } from "../../components/loadingIndicator.js";
 
 const POSTER_HOLD_DELAY_MS = 650;
 
@@ -629,7 +630,12 @@ export const CatalogSeeAllScreen = {
         <section class="seeall-grid">
           ${cards}
         </section>
-        ${this.loading ? `<div class="seeall-loading">${escapeHtml(t("discover_loading", {}, "Loading..."))}</div>` : ""}
+        ${this.loading ? `
+          <div class="seeall-loading">
+            ${renderLoadingIndicator()}
+            <span>${escapeHtml(t("discover_loading", {}, "Loading..."))}</span>
+          </div>
+        ` : ""}
       </div>
     `;
 

@@ -52,6 +52,7 @@ import {
   setLegacySidebarExpanded
 } from "../../components/sidebarNavigation.js";
 import { NuvioDialog } from "../../components/nuvioDialog.js";
+import { renderLoadingIndicator } from "../../components/loadingIndicator.js";
 import {
   CW_DAYS_CAP,
   CW_DISPLAY_SNAPSHOT_KEY,
@@ -297,7 +298,7 @@ function uniqueById(items = []) {
 function renderHomeLoadingState() {
   return `
     <div class="home-loading-state" aria-label="Loading">
-      <div class="home-loading-spinner" aria-hidden="true"></div>
+      ${renderLoadingIndicator({ className: "home-loading-spinner" })}
     </div>
   `;
 }

@@ -20,6 +20,7 @@ import {
   focusWithoutAutoScroll,
   setLegacySidebarExpanded
 } from "../../components/sidebarNavigation.js";
+import { renderLoadingIndicator } from "../../components/loadingIndicator.js";
 
 const POSTER_HOLD_DELAY_MS = 650;
 const PICKER_MENU_EXIT_MS = 160;
@@ -467,7 +468,12 @@ export const DiscoverScreen = {
 
   renderDiscoverLoadingMarkup() {
     return this.loading
-      ? `<div class="seeall-loading">${escapeHtml(t("discover_loading", {}, "Loading..."))}</div>`
+      ? `
+        <div class="seeall-loading">
+          ${renderLoadingIndicator()}
+          <span>${escapeHtml(t("discover_loading", {}, "Loading..."))}</span>
+        </div>
+      `
       : "";
   },
 

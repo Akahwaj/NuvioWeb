@@ -42,6 +42,7 @@ import { metaRepository } from "../../../data/repository/metaRepository.js";
 import { I18n } from "../../../i18n/index.js";
 import { Environment } from "../../../platform/environment.js";
 import { Router } from "../../navigation/router.js";
+import { renderLoadingIndicator } from "../../components/loadingIndicator.js";
 import { DirectDebridResolver } from "../../../core/debrid/directDebridResolver.js";
 import { TraktScrobbleService } from "../../../data/repository/traktScrobbleService.js";
 import { WebOsEngineFsResolver } from "../../../core/p2p/webosEngineFsResolver.js";
@@ -78,7 +79,7 @@ const CLOCK_FORMATTER_CACHE = new Map();
 const LANGUAGE_DISPLAY_NAME_CACHE = new Map();
 const ENGINEFS_NAVIGATION_CLEANUP_GRACE_MS = 1500;
 const STARTUP_PLAYBACK_ADVANCE_EPSILON_SECONDS = 0.001;
-const BUFFERING_SPINNER_STALL_MS = 500;
+const BUFFERING_SPINNER_STALL_MS = 0;
 const LOADING_LOGO_FILL_TARGET_LERP = 0.22;
 const LOADING_LOGO_FILL_IDLE_STEP = 0.006;
 const LOADING_LOGO_FILL_FRAME_MS = 80;
@@ -4579,7 +4580,7 @@ export const PlayerScreen = {
         </div>
 
         <div id="playerBufferingSpinner" class="player-loading-spinner hidden" aria-hidden="true">
-          <div class="player-loading-spinner-ring"></div>
+          ${renderLoadingIndicator({ className: "player-loading-spinner-ring" })}
           <div class="player-loading-status player-loading-spinner-status hidden"></div>
         </div>
 
@@ -13552,7 +13553,12 @@ export const PlayerScreen = {
     const showOptionsRail = activeLanguage !== SUBTITLE_LANGUAGE_OFF_KEY || subtitleLoadingVisible;
     const focusedStyleSide = this.subtitleStyleControlSide === "plus" ? "plus" : "minus";
     const emptySubtitleOptionsMarkup = subtitleLoadingVisible
-      ? `<div class="player-dialog-empty">${escapeHtml(t("subtitle_loading_builtin", {}, "Loading subtitle tracks..."))}</div>`
+      ? `
+        <div class="player-dialog-empty player-dialog-loading">
+          ${renderLoadingIndicator()}
+          <span>${escapeHtml(t("subtitle_loading_builtin", {}, "Loading subtitle tracks..."))}</span>
+        </div>
+      `
       : `<div class="player-dialog-empty">${escapeHtml(t("subtitle_none", {}, "No subtitles"))}</div>`;
 
     dialog.innerHTML = `
@@ -14281,7 +14287,10 @@ export const PlayerScreen = {
       const emptyMessage = loading ? "Loading audio tracks..." : this.getUnavailableTrackMessage("audio");
       dialog.innerHTML = `
         <div class="player-dialog-title">${escapeHtml(t("audio_dialog_title", {}, "Audio"))}</div>
-        <div class="player-dialog-empty">${emptyMessage}</div>
+        <div class="player-dialog-empty${loading ? " player-dialog-loading" : ""}">
+          ${loading ? renderLoadingIndicator() : ""}
+          <span>${escapeHtml(emptyMessage)}</span>
+        </div>
         <div class="player-audio-controls-list">
           ${audioControls.map((control, index) => this.renderAudioControlItem(control, index)).join("")}
         </div>

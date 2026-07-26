@@ -8,6 +8,7 @@ import {
   posterItemFromNode,
   PosterOptionsDialogController
 } from "../../components/posterOptionsMenu.js";
+import { renderLoadingIndicator } from "../../components/loadingIndicator.js";
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w780";
@@ -171,7 +172,10 @@ export const CastDetailScreen = {
   renderLoading() {
     this.container.innerHTML = `
       <div class="cast-detail-shell">
-        <div class="cast-detail-loading">Loading cast profile...</div>
+        <div class="cast-detail-loading">
+          ${renderLoadingIndicator()}
+          <span>Loading cast profile...</span>
+        </div>
       </div>
     `;
   },

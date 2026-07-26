@@ -21,6 +21,7 @@ import { Platform } from "../../../platform/index.js";
 import { TMDB_API_KEY, TRAKT_API_URL, TRAKT_CLIENT_ID, YOUTUBE_PROXY_URL } from "../../../config.js";
 import { I18n } from "../../../i18n/index.js";
 import { NuvioDialog } from "../../components/nuvioDialog.js";
+import { renderLoadingIndicator } from "../../components/loadingIndicator.js";
 import {
   posterItemFromNode,
   PosterOptionsDialogController
@@ -2803,7 +2804,7 @@ export const MetaDetailsScreen = {
       <div class="series-detail-shell${this.getTrailerShellStateClasses()}">
         <div class="series-detail-backdrop" data-backdrop-url="${escapeAttribute(backdrop || "")}"${backdrop ? ` style="background-image:url('${backdrop.replace(/'/g, "%27")}')"` : ""}></div>
         <div class="detail-trailer-layer"></div>
-        <div class="detail-trailer-loading-spinner" aria-hidden="true"><div class="player-loading-spinner-ring"></div></div>
+        <div class="detail-trailer-loading-spinner" aria-hidden="true">${renderLoadingIndicator({ className: "player-loading-spinner-ring" })}</div>
         <div class="series-detail-vignette"></div>
         <div class="detail-bottom-shadow"></div>
 
@@ -3124,7 +3125,7 @@ export const MetaDetailsScreen = {
       <div class="series-detail-shell movie-detail-shell${this.getTrailerShellStateClasses()}">
         <div class="series-detail-backdrop" data-backdrop-url="${escapeAttribute(backdrop || "")}"${backdrop ? ` style="background-image:url('${backdrop.replace(/'/g, "%27")}')"` : ""}></div>
         <div class="detail-trailer-layer"></div>
-        <div class="detail-trailer-loading-spinner" aria-hidden="true"><div class="player-loading-spinner-ring"></div></div>
+        <div class="detail-trailer-loading-spinner" aria-hidden="true">${renderLoadingIndicator({ className: "player-loading-spinner-ring" })}</div>
         <div class="series-detail-vignette"></div>
         <div class="detail-bottom-shadow"></div>
 
@@ -6755,7 +6756,12 @@ export const MetaDetailsScreen = {
           )
           .join("")
       : pending.loading
-        ? `<div class="series-stream-empty">Loading streams...</div>`
+        ? `
+          <div class="series-stream-empty series-stream-loading">
+            ${renderLoadingIndicator()}
+            <span>Loading streams...</span>
+          </div>
+        `
         : `<div class="series-stream-empty">No streams found for this filter.</div>`;
 
     mount.innerHTML = `
@@ -6833,7 +6839,12 @@ export const MetaDetailsScreen = {
           )
           .join("")
       : pending.loading
-        ? `<div class="series-stream-empty">Loading streams...</div>`
+        ? `
+          <div class="series-stream-empty series-stream-loading">
+            ${renderLoadingIndicator()}
+            <span>Loading streams...</span>
+          </div>
+        `
         : `<div class="series-stream-empty">No streams found for this filter.</div>`;
 
     mount.innerHTML = `

@@ -84,6 +84,7 @@ import {
   setModernSidebarExpanded,
   setLegacySidebarExpanded
 } from "../../components/sidebarNavigation.js";
+import { renderLoadingIndicator } from "../../components/loadingIndicator.js";
 
 const STRICT_DPAD_GRID_KEY = "strictDpadGridNavigation";
 const SETTINGS_UI_STATE_KEY = "settingsScreenUiState";
@@ -2798,7 +2799,12 @@ export const SettingsScreen = {
       ${this.renderSectionHeader(SECTION_META.find((item) => item.id === "account"))}
       <div class="settings-group-card settings-group-card-fill settings-account-card">
         <div class="settings-account-list">
-          ${loading ? `<p class="settings-account-loading">${escapeHtml(t("account_loading", {}, "Loading..."))}</p>` : ""}
+          ${loading ? `
+            <div class="settings-account-loading">
+              ${renderLoadingIndicator()}
+              <span>${escapeHtml(t("account_loading", {}, "Loading..."))}</span>
+            </div>
+          ` : ""}
           ${
             !loading && !signedIn
               ? `
@@ -2878,7 +2884,8 @@ export const SettingsScreen = {
   renderAccountSyncOverviewLoading() {
     return `
       <div class="settings-account-sync-overview settings-account-sync-loading">
-        ${escapeHtml(t("account_loading_sync", {}, "Loading sync data..."))}
+        ${renderLoadingIndicator()}
+        <span>${escapeHtml(t("account_loading_sync", {}, "Loading sync data..."))}</span>
       </div>
     `;
   },

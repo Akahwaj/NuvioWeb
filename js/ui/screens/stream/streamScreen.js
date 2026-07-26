@@ -43,6 +43,7 @@ import {
   normalizeStreamBadgeChipColor,
   normalizeStreamBadgeRules
 } from "../../../core/streams/streamBadgeRules.js";
+import { renderLoadingIndicator } from "../../components/loadingIndicator.js";
 
 const STREAM_BADGE_LIMIT = 9;
 const WEBOS_NATIVE_PLAYER_APP_IDS = [
@@ -2062,7 +2063,7 @@ export const StreamScreen = {
       .join(" ");
     const spinner =
       chipStatus === "loading"
-        ? '<span class="stream-route-chip-spinner" aria-hidden="true"></span>'
+        ? renderLoadingIndicator({ className: "stream-route-chip-spinner" })
         : "";
     return `
       <button class="${classes}" data-action="setFilter" data-addon="${escapeHtml(name)}">
