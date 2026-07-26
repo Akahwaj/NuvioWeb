@@ -43,6 +43,7 @@ import {
   normalizeStreamBadgeChipColor,
   normalizeStreamBadgeRules
 } from "../../../core/streams/streamBadgeRules.js";
+import { normalizeMathematicalAlphanumericSymbols } from "../../../core/streams/streamDisplayText.js";
 import { renderLoadingIndicator } from "../../components/loadingIndicator.js";
 
 const STREAM_BADGE_LIMIT = 9;
@@ -459,7 +460,10 @@ function getStreamHeadline(stream = {}) {
     return stream.addonName || "Unknown source";
   }
   const firstLine = String(primary).split(/\r?\n/)[0].trim();
-  return firstLine || stream.addonName || "Unknown source";
+  const displayLine = Environment.isWebOS()
+    ? normalizeMathematicalAlphanumericSymbols(firstLine)
+    : firstLine;
+  return displayLine || stream.addonName || "Unknown source";
 }
 
 function getStreamQuality(stream = {}) {
