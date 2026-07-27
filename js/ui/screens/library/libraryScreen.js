@@ -585,6 +585,7 @@ export const LibraryScreen = {
                        data-item-title="${escapeHtml(item.name || item.id || "Untitled")}"
                        data-poster-src="${escapeHtml(item.poster || "")}"
                        data-backdrop-src="${escapeHtml(item.background || "")}"
+                       data-addon-base-url="${escapeHtml(item.addonBaseUrl || "")}"
                        data-focus-key="${escapeHtml(focusKey)}">
                 <div class="library-grid-poster${item.poster ? "" : " placeholder"}"${item.poster ? ` style="background-image:url('${escapeHtml(item.poster)}')"` : ""}>
                   ${isWatched ? renderTitleWatchedBadge({ className: "library-watched-badge", iconClassName: "library-watched-badge-svg" }) : ""}
@@ -919,7 +920,13 @@ export const LibraryScreen = {
           Router.navigate("detail", {
             itemId: target.id,
             itemType: target.type || "movie",
-            fallbackTitle: target.title || "Untitled"
+            fallbackTitle: target.title || "Untitled",
+            fallbackPoster: target.poster || "",
+            fallbackBackground: target.background || "",
+            addonBaseUrl: target.addonBaseUrl || "",
+            addonId: target.addonId || "",
+            addonName: target.addonName || "",
+            catalogType: target.catalogType || target.type || "movie"
           });
         },
         onDismiss: () => {

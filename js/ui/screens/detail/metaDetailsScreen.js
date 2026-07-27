@@ -4586,7 +4586,21 @@ export const MetaDetailsScreen = {
   },
 
   async openPosterOptionsMenu(node) {
-    const item = posterItemFromNode(node, this.params?.itemType || "movie");
+    const parsedItem = posterItemFromNode(node, this.params?.itemType || "movie");
+    const item = parsedItem
+      ? {
+          ...parsedItem,
+          addonBaseUrl: parsedItem.addonBaseUrl || this.params?.addonBaseUrl || "",
+          addonId: parsedItem.addonId || this.params?.addonId || "",
+          addonName: parsedItem.addonName || this.params?.addonName || "",
+          catalogType:
+            parsedItem.catalogType ||
+            this.params?.catalogType ||
+            parsedItem.type ||
+            this.params?.itemType ||
+            "movie"
+        }
+      : null;
     if (!item?.id) {
       return false;
     }
@@ -4598,7 +4612,13 @@ export const MetaDetailsScreen = {
           Router.navigate("detail", {
             itemId: target.id,
             itemType: target.type || "movie",
-            fallbackTitle: target.title || "Untitled"
+            fallbackTitle: target.title || "Untitled",
+            fallbackPoster: target.poster || "",
+            fallbackBackground: target.background || "",
+            addonBaseUrl: target.addonBaseUrl || "",
+            addonId: target.addonId || "",
+            addonName: target.addonName || "",
+            catalogType: target.catalogType || target.type || "movie"
           });
         },
         onDismiss: () => {

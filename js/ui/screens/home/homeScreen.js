@@ -4,6 +4,7 @@ import { addonRepository } from "../../../data/repository/addonRepository.js";
 import { catalogRepository } from "../../../data/repository/catalogRepository.js";
 import { watchProgressRepository } from "../../../data/repository/watchProgressRepository.js";
 import { watchedItemsRepository } from "../../../data/repository/watchedItemsRepository.js";
+import { watchedSeriesReconciliationService } from "../../../data/repository/watchedSeriesReconciliationService.js";
 import { savedLibraryRepository } from "../../../data/repository/savedLibraryRepository.js";
 import { libraryRepository, LibrarySourceMode } from "../../../data/repository/libraryRepository.js";
 import { LayoutPreferences } from "../../../data/local/layoutPreferences.js";
@@ -975,7 +976,12 @@ function progressFractionForContinueWatching(item = {}) {
 
 function isSeriesTypeForContinueWatching(type) {
   const normalized = String(type || "").toLowerCase();
-  return normalized === "series" || normalized === "tv";
+  return ["series", "tv", "anime"].includes(normalized);
+}
+
+function isPosterWatchedType(type) {
+  const normalized = String(type || "").toLowerCase();
+  return normalized === "movie" || isSeriesTypeForContinueWatching(normalized);
 }
 
 function isCompletedForContinueWatching(item = {}) {
@@ -3811,7 +3817,6 @@ export const HomeScreen = {
     if (!item?.id) {
       return [];
     }
-    const isMovie = !isSeriesTypeForContinueWatching(item.type || "movie");
     const isTraktLibrary = this.posterHoldMenu?.librarySourceMode === LibrarySourceMode.TRAKT;
     const options = [
       { action: "details", label: t("cw_action_go_to_details", {}, "Go to details") },
@@ -3824,7 +3829,7 @@ export const HomeScreen = {
           : t("hero_add_to_library", {}, "Add to library"))
       }
     ];
-    if (isMovie) {
+    if (isPosterWatchedType(item.type)) {
       options.push({
         action: "toggleWatched",
         label: this.posterHoldMenu?.isWatched
@@ -3843,10 +3848,13 @@ export const HomeScreen = {
     return "";
   },
 
-  destroyHomeHoldDialog() {
-    if (this._homeHoldDialog) {
-      this._homeHoldDialog.destroy();
-      this._homeHoldDialog = null;
+  destroyHomeHoldDialog({ afterExit = null } = {}) {
+    const dialog = this._homeHoldDialog;
+    this._homeHoldDialog = null;
+    if (dialog) {
+      dialog.destroy({ afterExit });
+    } else if (typeof afterExit === "function") {
+      afterExit();
     }
   },
 
@@ -4215,7 +4223,11 @@ export const HomeScreen = {
       poster: node.dataset.posterSrc || null,
       background: node.dataset.backdropSrc || null,
       backdrop: node.dataset.backdropSrc || null,
-      logo: node.dataset.logoSrc || null
+      logo: node.dataset.logoSrc || null,
+      addonBaseUrl: node.dataset.addonBaseUrl || "",
+      addonId: node.dataset.addonId || "",
+      addonName: node.dataset.addonName || "",
+      catalogType: node.dataset.catalogType || node.dataset.itemType || "movie"
     }, node.dataset.itemType || "movie");
   },
 
@@ -4493,23 +4505,24 @@ export const HomeScreen = {
     }
     const anchorIndex = Number(this.continueWatchingMenu?.index);
     this.cancelPendingContinueWatchingEnter();
-    this.destroyHomeHoldDialog();
     this.rememberContinueWatchingReturnFocus(anchorIndex);
     this.continueWatchingMenu = null;
     this.holdMenuScrollState = null;
-    Router.navigate("detail", {
-      itemId: normalized.contentId,
-      itemType: normalized.type || "movie",
-      imdbId: normalized.imdbId || null,
-      tmdbId: normalized.tmdbId || null,
-      traktId: normalized.traktId || null,
-      fallbackTitle: normalized.title || normalized.contentId || "Untitled",
-      fromContinueWatching: true,
-      returnHomeOnBack: true,
-      resumeVideoId: normalized.videoId || null,
-      resumeSeason: normalized.season ?? null,
-      resumeEpisode: normalized.episode ?? null,
-      resumeStreamIdentity: normalized.streamIdentity || null
+    this.destroyHomeHoldDialog({
+      afterExit: () => Router.navigate("detail", {
+        itemId: normalized.contentId,
+        itemType: normalized.type || "movie",
+        imdbId: normalized.imdbId || null,
+        tmdbId: normalized.tmdbId || null,
+        traktId: normalized.traktId || null,
+        fallbackTitle: normalized.title || normalized.contentId || "Untitled",
+        fromContinueWatching: true,
+        returnHomeOnBack: true,
+        resumeVideoId: normalized.videoId || null,
+        resumeSeason: normalized.season ?? null,
+        resumeEpisode: normalized.episode ?? null,
+        resumeStreamIdentity: normalized.streamIdentity || null
+      })
     });
     return true;
   },
@@ -4660,6 +4673,23 @@ export const HomeScreen = {
       return false;
     }
     const watched = Boolean(this.posterHoldMenu?.isWatched || await watchedItemsRepository.isWatched(item.id).catch(() => false));
+    if (isSeriesTypeForContinueWatching(item.type)) {
+      if (watched) {
+        await watchedSeriesReconciliationService.unmarkSeriesWatched(item.id);
+      } else {
+        await watchedSeriesReconciliationService.markSeriesWatched(
+          item.id,
+          item.type || "series",
+          { title: item.name || item.id || "Untitled" }
+        );
+      }
+      this.watchedItems = await watchedItemsRepository.getAll(2000).catch(() => this.watchedItems);
+      this.watchedTitleIds = buildWatchedTitleIdSet(this.watchedItems);
+      if (this.posterHoldMenu) {
+        this.posterHoldMenu = { ...this.posterHoldMenu, isWatched: !watched };
+      }
+      return true;
+    }
     if (watched) {
       await watchedItemsRepository.unmark(item.id);
       await watchProgressRepository.removeProgress(item.id, null).catch(() => false);
@@ -4719,7 +4749,6 @@ export const HomeScreen = {
           itemId: String(this.posterHoldMenu.item?.id || "")
         }
       : null;
-    this.destroyHomeHoldDialog();
     if (option.action === "details") {
       if (pendingFocus) {
         const target = this.resolvePosterHoldRestoreTarget(pendingFocus);
@@ -4730,13 +4759,22 @@ export const HomeScreen = {
       this.posterHoldMenu = null;
       this.holdMenuScrollState = null;
       this.unlockHomeHoldFocus();
-      Router.navigate("detail", {
-        itemId: item.id,
-        itemType: item.type || "movie",
-        fallbackTitle: item.name || item.id || "Untitled"
+      this.destroyHomeHoldDialog({
+        afterExit: () => Router.navigate("detail", {
+          itemId: item.id,
+          itemType: item.type || "movie",
+          fallbackTitle: item.name || item.id || "Untitled",
+          fallbackPoster: item.poster || "",
+          fallbackBackground: item.background || item.backdrop || "",
+          addonBaseUrl: item.addonBaseUrl || "",
+          addonId: item.addonId || "",
+          addonName: item.addonName || "",
+          catalogType: item.catalogType || item.type || "movie"
+        })
       });
       return true;
     }
+    this.destroyHomeHoldDialog();
     if (option.action === "toggleLibrary") {
       await this.togglePosterLibrary(item);
     } else if (option.action === "manageLists") {

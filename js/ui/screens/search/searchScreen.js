@@ -986,7 +986,13 @@ export const SearchScreen = {
             dataset: {
               itemId: target.id,
               itemType: target.type || "movie",
-              itemTitle: target.title || "Untitled"
+              itemTitle: target.title || "Untitled",
+              posterSrc: target.poster || "",
+              backdropSrc: target.background || "",
+              addonBaseUrl: target.addonBaseUrl || "",
+              addonId: target.addonId || "",
+              addonName: target.addonName || "",
+              catalogType: target.catalogType || target.type || "movie"
             }
           });
         },

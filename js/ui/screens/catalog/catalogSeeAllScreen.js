@@ -527,7 +527,13 @@ export const CatalogSeeAllScreen = {
           Router.navigate("detail", {
             itemId: target.id,
             itemType: target.type || "movie",
-            fallbackTitle: target.title || "Untitled"
+            fallbackTitle: target.title || "Untitled",
+            fallbackPoster: target.poster || "",
+            fallbackBackground: target.background || "",
+            addonBaseUrl: target.addonBaseUrl || "",
+            addonId: target.addonId || "",
+            addonName: target.addonName || "",
+            catalogType: target.catalogType || target.type || "movie"
           });
         },
         onDismiss: () => {
