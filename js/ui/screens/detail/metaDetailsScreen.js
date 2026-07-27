@@ -159,9 +159,7 @@ function resolveSeasonEpisode(video = {}) {
   // provide an episode/number; treat those as season 1 instead of discarding
   // the episode. The explicit-0-vs-missing distinction from
   // firstNonNegativeInt() is consumed right here: a season explicitly set to 0
-  // (specials) skips this fallback, so specials stay excluded from the regular
-  // episode list exactly as before. After the fallback, missing values are
-  // returned as 0, matching what normalizeEpisodes() filters on.
+  // (specials) skips this fallback, while an omitted season still maps to season 1.
   if (season == null && episode > 0) {
     return { season: 1, episode };
   }
@@ -203,8 +201,13 @@ function toEpisodeEntry(video = {}) {
 function normalizeEpisodes(videos = []) {
   return videos
     .map((video) => toEpisodeEntry(video))
-    .filter((video) => video.id && video.season > 0 && video.episode > 0)
+    .filter((video) => video.id && video.season >= 0 && video.episode > 0)
     .sort((left, right) => {
+      if (left.season === 0 || right.season === 0) {
+        if (left.season !== right.season) {
+          return left.season === 0 ? 1 : -1;
+        }
+      }
       if (left.season !== right.season) {
         return left.season - right.season;
       }
@@ -1315,7 +1318,7 @@ export const MetaDetailsScreen = {
     this.trailerSource = snapshot.trailerSource
       ? { ...snapshot.trailerSource }
       : resolveTrailerSource(this.meta);
-    this.selectedSeason = Number(snapshot.selectedSeason || this.episodes[0]?.season || 1);
+    this.selectedSeason = Number(snapshot.selectedSeason ?? this.episodes[0]?.season ?? 1);
     this.selectedRatingSeason = Number(snapshot.selectedRatingSeason || this.selectedSeason || 1);
     this.seriesInsightTab = String(snapshot.seriesInsightTab || "cast");
     this.movieInsightTab = String(snapshot.movieInsightTab || "cast");
@@ -1920,13 +1923,16 @@ export const MetaDetailsScreen = {
   },
 
   getAvailableSeasons(episodes = this.episodes) {
-    return Array.from(
+    const seasons = Array.from(
       new Set(
         (Array.isArray(episodes) ? episodes : [])
           .map((episode) => Number(episode?.season || 0))
-          .filter((season) => Number.isFinite(season) && season > 0)
+          .filter((season) => Number.isFinite(season) && season >= 0)
       )
-    ).sort((left, right) => left - right);
+    );
+    const regular = seasons.filter((season) => season > 0).sort((left, right) => left - right);
+    const specials = seasons.filter((season) => season === 0);
+    return [...regular, ...specials];
   },
 
   supportsTraktComments(meta = this.meta) {
@@ -2056,7 +2062,7 @@ export const MetaDetailsScreen = {
 
   hasAvailableSeason(season, episodes = this.episodes) {
     const wanted = Number(season || 0);
-    return wanted > 0 && this.getAvailableSeasons(episodes).includes(wanted);
+    return wanted >= 0 && this.getAvailableSeasons(episodes).includes(wanted);
   },
 
   findEpisodeFromProgress(progress = {}) {
@@ -2070,9 +2076,9 @@ export const MetaDetailsScreen = {
         return directMatch;
       }
     }
-    const season = Number(progress?.season || 0);
+    const season = Number(progress?.season);
     const episode = Number(progress?.episode || 0);
-    if (season > 0 && episode > 0) {
+    if (Number.isFinite(season) && season >= 0 && episode > 0) {
       return (
         this.episodes.find(
           (entry) =>
@@ -2087,13 +2093,25 @@ export const MetaDetailsScreen = {
     if (!episode || !this.episodes?.length) {
       return null;
     }
-    const currentIndex = this.episodes.findIndex(
+    const sequence = this.getEpisodeSequence(episode);
+    const currentIndex = sequence.findIndex(
       (entry) =>
         String(entry?.id || "") === String(episode?.id || "") ||
         (Number(entry?.season || 0) === Number(episode?.season || 0) &&
           Number(entry?.episode || 0) === Number(episode?.episode || 0))
     );
-    return currentIndex >= 0 ? this.episodes[currentIndex + 1] || null : null;
+    return currentIndex >= 0 ? sequence[currentIndex + 1] || null : null;
+  },
+
+  getEpisodeSequence(anchorEpisode = null) {
+    const episodes = Array.isArray(this.episodes) ? this.episodes : [];
+    const anchorSeason = Number(anchorEpisode?.season);
+    const specials = episodes.filter((episode) => Number(episode?.season) === 0);
+    const regular = episodes.filter((episode) => Number(episode?.season) > 0);
+    if (Number.isFinite(anchorSeason) && anchorSeason === 0) {
+      return specials;
+    }
+    return regular.length ? regular : specials;
   },
 
   getLatestSeriesProgress(progress = null, progressItems = []) {
@@ -2106,7 +2124,10 @@ export const MetaDetailsScreen = {
       if (String(entry?.contentId || "").trim() !== contentId) {
         return;
       }
-      if (Number(entry?.season || 0) <= 0 && !String(entry?.videoId || "").trim()) {
+      if (
+        (entry?.season == null || Number(entry.season) < 0) &&
+        !String(entry?.videoId || "").trim()
+      ) {
         return;
       }
       candidates.push(entry);
@@ -2119,10 +2140,10 @@ export const MetaDetailsScreen = {
   },
 
   resolvePreferredSeasonFromProgress(progress = null, progressItems = []) {
-    const routeSeason = Number(
-      this.params?.preferredSeason ?? this.params?.resumeSeason ?? this.params?.initialSeason ?? 0
-    );
-    if (Number.isFinite(routeSeason) && routeSeason > 0) {
+    const routeSeasonRaw =
+      this.params?.preferredSeason ?? this.params?.resumeSeason ?? this.params?.initialSeason;
+    const routeSeason = Number(routeSeasonRaw);
+    if (routeSeasonRaw != null && Number.isFinite(routeSeason) && routeSeason >= 0) {
       return routeSeason;
     }
 
@@ -2137,18 +2158,20 @@ export const MetaDetailsScreen = {
       return Number(progressEpisode.season || 0);
     }
 
-    const progressSeason = Number(latestProgress?.season || 0);
-    return Number.isFinite(progressSeason) && progressSeason > 0 ? progressSeason : 0;
+    const progressSeason = Number(latestProgress?.season);
+    return latestProgress?.season != null && Number.isFinite(progressSeason) && progressSeason >= 0
+      ? progressSeason
+      : null;
   },
 
   resolveInitialSelectedSeason(progress = null, progressItems = []) {
     const seasons = this.getAvailableSeasons();
     const currentSeason = Number(this.selectedSeason || 0);
-    if (this.hasManualSeasonSelection && currentSeason > 0 && seasons.includes(currentSeason)) {
+    if (this.hasManualSeasonSelection && currentSeason >= 0 && seasons.includes(currentSeason)) {
       return currentSeason;
     }
     const preferredSeason = this.resolvePreferredSeasonFromProgress(progress, progressItems);
-    if (preferredSeason > 0 && (!seasons.length || seasons.includes(preferredSeason))) {
+    if (preferredSeason != null && (!seasons.length || seasons.includes(preferredSeason))) {
       return preferredSeason;
     }
 
@@ -2156,7 +2179,7 @@ export const MetaDetailsScreen = {
       return currentSeason;
     }
 
-    return seasons[0] || 1;
+    return seasons[0] ?? 1;
   },
 
   computeNextEpisodeToWatch(progress) {
@@ -2164,6 +2187,10 @@ export const MetaDetailsScreen = {
       return null;
     }
     const currentEpisode = this.findEpisodeFromProgress(progress);
+    const episodes = this.getEpisodeSequence(currentEpisode);
+    if (!episodes.length) {
+      return null;
+    }
     if (currentEpisode && detailProgressFraction(progress) < DETAIL_PROGRESS_END_THRESHOLD) {
       return currentEpisode;
     }
@@ -2193,30 +2220,30 @@ export const MetaDetailsScreen = {
       return completedKeys.has(key);
     };
     let latestCompletedIndex = -1;
-    this.episodes.forEach((episode, index) => {
+    episodes.forEach((episode, index) => {
       if (isEpisodeCompleted(episode)) {
         latestCompletedIndex = Math.max(latestCompletedIndex, index);
       }
     });
     if (latestCompletedIndex >= 0) {
-      const nextUnwatched = this.episodes
+      const nextUnwatched = episodes
         .slice(latestCompletedIndex + 1)
         .find((episode) => !isEpisodeCompleted(episode));
       if (nextUnwatched) {
         return nextUnwatched;
       }
-      return this.episodes.find((episode) => !isEpisodeCompleted(episode)) || this.episodes[0];
+      return episodes.find((episode) => !isEpisodeCompleted(episode)) || episodes[0];
     }
     if (!currentEpisode) {
-      return this.episodes[0];
+      return episodes[0];
     }
-    const currentIndex = this.episodes.findIndex(
+    const currentIndex = episodes.findIndex(
       (episode) =>
         String(episode?.id || "") === String(currentEpisode?.id || "") ||
         (Number(episode?.season || 0) === Number(currentEpisode?.season || 0) &&
           Number(episode?.episode || 0) === Number(currentEpisode?.episode || 0))
     );
-    return this.episodes[currentIndex + 1] || this.episodes[currentIndex] || this.episodes[0];
+    return episodes[currentIndex + 1] || episodes[currentIndex] || episodes[0];
   },
 
   buildEpisodeState(progressItems = [], watchedItems = [], remoteWatchedMap = null) {
@@ -2231,7 +2258,7 @@ export const MetaDetailsScreen = {
       }
       const season = Number(entry?.season || 0);
       const episode = Number(entry?.episode || 0);
-      if (!season || !episode) {
+      if (!Number.isFinite(season) || season < 0 || !Number.isFinite(episode) || episode <= 0) {
         return;
       }
       const key = `${season}:${episode}`;
@@ -2244,7 +2271,13 @@ export const MetaDetailsScreen = {
     (Array.isArray(watchedItems) ? watchedItems : []).forEach((entry) => {
       const season = Number(entry?.season || 0);
       const episode = Number(entry?.episode || 0);
-      if (String(entry?.contentId || "") === contentId && season && episode) {
+      if (
+        String(entry?.contentId || "") === contentId &&
+        Number.isFinite(season) &&
+        season >= 0 &&
+        Number.isFinite(episode) &&
+        episode > 0
+      ) {
         watchedKeys.add(`${season}:${episode}`);
       }
     });
@@ -2294,9 +2327,15 @@ export const MetaDetailsScreen = {
         return directMatch;
       }
     }
-    const resumeSeason = Number(this.params?.resumeSeason || 0);
+    const resumeSeasonRaw = this.params?.resumeSeason;
+    const resumeSeason = Number(resumeSeasonRaw);
     const resumeEpisode = Number(this.params?.resumeEpisode || 0);
-    if (resumeSeason > 0 && resumeEpisode > 0) {
+    if (
+      resumeSeasonRaw != null &&
+      Number.isFinite(resumeSeason) &&
+      resumeSeason >= 0 &&
+      resumeEpisode > 0
+    ) {
       const episodeMatch = this.episodes.find(
         (entry) =>
           Number(entry?.season || 0) === resumeSeason &&
@@ -2752,7 +2791,7 @@ export const MetaDetailsScreen = {
     if (progress) {
       const season = Number(progress.season || this.nextEpisodeToWatch?.season || 0);
       const episode = Number(progress.episode || this.nextEpisodeToWatch?.episode || 0);
-      return season > 0 && episode > 0
+      return season >= 0 && episode > 0
         ? t("detail.resumeEpisodeShort", { season, episode }, "Resume S{{season}}E{{episode}}")
         : t("detail.resume", {}, "Resume");
     }
@@ -2814,7 +2853,7 @@ export const MetaDetailsScreen = {
             <div class="series-season-row" data-scroll-key="season-tabs">${this.renderSeasonButtons()}</div>
           </div>
           <div id="detailEpisodeTrackMount">
-            <div class="series-episode-track" data-scroll-key="episodes:${this.selectedSeason || 1}">${this.renderEpisodeCards()}</div>
+            <div class="series-episode-track" data-scroll-key="episodes:${this.selectedSeason ?? 1}">${this.renderEpisodeCards()}</div>
           </div>
           <div id="detailInsightSectionMount">${this.renderSeriesInsightSection()}</div>
           <div id="detailCommentsSectionMount">${this.renderStandaloneCommentsSection()}</div>
@@ -2917,7 +2956,7 @@ export const MetaDetailsScreen = {
     const episodeParts = [];
     const season = Number(progress.season || 0);
     const episode = Number(progress.episode || 0);
-    if (season > 0 && episode > 0) {
+    if (season >= 0 && episode > 0) {
       episodeParts.push(`S${season}E${episode}`);
     }
     const title = String(progress.episodeTitle || "").trim();
@@ -3242,7 +3281,7 @@ export const MetaDetailsScreen = {
 
     const episodeMount = this.container.querySelector("#detailEpisodeTrackMount");
     if (isSeries && episodeMount) {
-      episodeMount.innerHTML = `<div class="series-episode-track" data-scroll-key="episodes:${this.selectedSeason || 1}">${this.renderEpisodeCards()}</div>`;
+      episodeMount.innerHTML = `<div class="series-episode-track" data-scroll-key="episodes:${this.selectedSeason ?? 1}">${this.renderEpisodeCards()}</div>`;
     }
 
     const insightMount = this.container.querySelector("#detailInsightSectionMount");
@@ -3452,14 +3491,18 @@ export const MetaDetailsScreen = {
     if (!this.episodes?.length) {
       return `<p>${escapeHtml(t("detail.noEpisodesFound", {}, "No episodes found."))}</p>`;
     }
-    const seasons = Array.from(new Set(this.episodes.map((episode) => episode.season)));
+    const seasons = this.getAvailableSeasons();
     return seasons
       .map(
         (season) => `
       <button class="series-season-btn focusable${season === this.selectedSeason ? " selected" : ""}"
               data-action="selectSeason"
               data-season="${season}">
-        ${escapeHtml(t("detail.seasonLabel", { season }, "Season {{season}}"))}
+        ${escapeHtml(
+          season === 0
+            ? t("episodes_specials", {}, "Specials")
+            : t("detail.seasonLabel", { season }, "Season {{season}}")
+        )}
       </button>
       `
       )
@@ -3757,7 +3800,7 @@ export const MetaDetailsScreen = {
     }
     const focusRestore = focusRestoreOverride || this.captureDetailFocus();
     this.captureRenderedChromeState();
-    episodeMount.innerHTML = `<div class="series-episode-track${this.getSelectedSeasonEpisodes().length > EPISODE_VIRTUALIZATION_THRESHOLD ? " is-virtualized" : ""}" data-scroll-key="episodes:${this.selectedSeason || 1}">${this.renderEpisodeCards(preferredIndex)}</div>`;
+    episodeMount.innerHTML = `<div class="series-episode-track${this.getSelectedSeasonEpisodes().length > EPISODE_VIRTUALIZATION_THRESHOLD ? " is-virtualized" : ""}" data-scroll-key="episodes:${this.selectedSeason ?? 1}">${this.renderEpisodeCards(preferredIndex)}</div>`;
     ScreenUtils.indexFocusables(this.container);
     this.pendingFocusRestore = focusRestore;
     this.bindDetailChrome();
@@ -4048,13 +4091,13 @@ export const MetaDetailsScreen = {
   },
 
   getSeasonHoldMenuSeason() {
-    const season = Number(this.seasonHoldMenu?.season || 0);
-    return Number.isFinite(season) && season > 0 ? season : null;
+    const season = Number(this.seasonHoldMenu?.season);
+    return Number.isFinite(season) && season >= 0 ? season : null;
   },
 
   getSeasonHoldMenuOptions() {
     const season = this.getSeasonHoldMenuSeason();
-    if (!season) {
+    if (season == null) {
       return [];
     }
     const fullyWatched = this.isSeasonFullyWatched(season);
@@ -4179,13 +4222,16 @@ export const MetaDetailsScreen = {
 
   mountSeasonHoldDialog() {
     const season = this.getSeasonHoldMenuSeason();
-    if (!season) {
+    if (season == null) {
       return false;
     }
     const focusRestore = { selector: `.series-season-btn[data-season="${season}"]` };
     this.destroyDetailHoldDialog();
     this.detailHoldDialog = new NuvioDialog({
-      title: t("detail.seasonLabel", { season }, "Season {{season}}"),
+      title:
+        season === 0
+          ? t("episodes_specials", {}, "Specials")
+          : t("detail.seasonLabel", { season }, "Season {{season}}"),
       subtitle: t("episodes_season_actions", {}, "Season actions"),
       widthVw: 37.5,
       suppressEnterUntilKeyUp: true,
@@ -4741,7 +4787,7 @@ export const MetaDetailsScreen = {
 
   startPendingSeasonHold(node) {
     const season = Number(node?.dataset?.season || 0);
-    if (!Number.isFinite(season) || season <= 0) {
+    if (!Number.isFinite(season) || season < 0) {
       return false;
     }
     this.cancelPendingSeasonHold();
@@ -4810,7 +4856,7 @@ export const MetaDetailsScreen = {
       return false;
     }
     const season = Number(node?.dataset?.season || 0);
-    if (!Number.isFinite(season) || season <= 0) {
+    if (!Number.isFinite(season) || season < 0) {
       return false;
     }
     if (season !== this.selectedSeason) {
@@ -4836,7 +4882,7 @@ export const MetaDetailsScreen = {
 
   openSeasonHoldMenu(node) {
     const season = Number(node?.dataset?.season || 0);
-    if (!Number.isFinite(season) || season <= 0) {
+    if (!Number.isFinite(season) || season < 0) {
       return false;
     }
     this.seasonHoldMenu = {
@@ -4863,7 +4909,7 @@ export const MetaDetailsScreen = {
     if (!this.seasonHoldMenu) {
       return false;
     }
-    const season = Number(this.seasonHoldMenu.season || this.selectedSeason || 1);
+    const season = Number(this.seasonHoldMenu.season ?? this.selectedSeason ?? 1);
     this.seasonHoldMenu = null;
     this.destroyDetailHoldDialog();
     if (restoreFocus) {
@@ -5101,7 +5147,7 @@ export const MetaDetailsScreen = {
       options[
         Math.max(0, Math.min(options.length - 1, Number(this.seasonHoldMenu?.optionIndex || 0)))
       ];
-    if (!season || !option) {
+    if (season == null || !option) {
       return false;
     }
     if (option.action === "markSeasonWatched" || option.action === "markSeasonUnwatched") {
@@ -5445,7 +5491,7 @@ export const MetaDetailsScreen = {
       }
       if (target.matches(".series-season-btn.focusable")) {
         const season = Number(target.dataset.season || 0);
-        if (season > 0 && season !== this.selectedSeason) {
+        if (season >= 0 && season !== this.selectedSeason) {
           this.hasManualSeasonSelection = true;
           this.selectedSeason = season;
           this.render(this.meta, { selector: `.series-season-btn[data-season="${season}"]` });
@@ -5566,7 +5612,7 @@ export const MetaDetailsScreen = {
       return this.getEpisodeFocusDescriptor(this.episodeHoldMenu?.videoId);
     }
     if (this.seasonHoldMenu) {
-      const season = Number(this.seasonHoldMenu.season || this.selectedSeason || 1);
+      const season = Number(this.seasonHoldMenu.season ?? this.selectedSeason ?? 1);
       return { selector: `.series-season-btn[data-season="${season}"]` };
     }
     if (this.posterOptionsController?.dialog) {
@@ -5594,7 +5640,7 @@ export const MetaDetailsScreen = {
     const action = String(target.dataset.action || "");
     if (action === "selectSeason") {
       const season = Number(target.dataset.season || 0);
-      return season > 0 ? { selector: `.series-season-btn[data-season="${season}"]` } : null;
+      return season >= 0 ? { selector: `.series-season-btn[data-season="${season}"]` } : null;
     }
     if (action === "setSeriesInsightTab" || action === "setMovieInsightTab") {
       const tab = String(target.dataset.tab || "");
@@ -6922,8 +6968,7 @@ export const MetaDetailsScreen = {
     if (!selectedStream?.url) {
       return;
     }
-    const currentIndex = this.episodes.findIndex((entry) => entry.id === pending.videoId);
-    const nextEpisode = currentIndex >= 0 ? this.episodes[currentIndex + 1] || null : null;
+    const nextEpisode = this.getNextEpisodeAfter(pending.episode);
     const imdbId = resolveMetaImdbId(this.meta, this.params);
     const tmdbId = resolveMetaTmdbId(this.meta, this.params);
     const traktId = resolveMetaTraktId(this.meta, this.params);
@@ -6989,8 +7034,7 @@ export const MetaDetailsScreen = {
     if (!episode?.id) {
       return;
     }
-    const currentIndex = this.episodes.findIndex((entry) => entry.id === episode.id);
-    const nextEpisode = currentIndex >= 0 ? this.episodes[currentIndex + 1] || null : null;
+    const nextEpisode = this.getNextEpisodeAfter(episode);
     const streamBackdrop =
       this.meta?.background || this.meta?.landscapePoster || this.meta?.poster || null;
     const imdbId = resolveMetaImdbId(this.meta, this.params);

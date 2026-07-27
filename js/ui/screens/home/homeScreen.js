@@ -750,7 +750,13 @@ function normalizeHomeRowItem(row = null, item = null) {
 function formatEpisodeCode(season, episode) {
   const seasonNumber = Number(season);
   const episodeNumber = Number(episode);
-  if (Number.isFinite(seasonNumber) && seasonNumber > 0 && Number.isFinite(episodeNumber) && episodeNumber > 0) {
+  if (
+    season != null &&
+    Number.isFinite(seasonNumber) &&
+    seasonNumber >= 0 &&
+    Number.isFinite(episodeNumber) &&
+    episodeNumber > 0
+  ) {
     return `S${seasonNumber} E${episodeNumber}`;
   }
   if (Number.isFinite(episodeNumber) && episodeNumber > 0) {
@@ -1001,18 +1007,22 @@ function episodeSortKey(season, episode) {
   return (Number(season || 0) * 1000) + Number(episode || 0);
 }
 
+function normalizeEpisodeEntry(video = {}) {
+  return {
+    id: String(video?.id || "").trim(),
+    season: Number(video?.season ?? video?.seasonNumber ?? 0),
+    episode: Number(video?.episode ?? video?.episodeNumber ?? 0),
+    title: String(video?.title || video?.name || "").trim(),
+    thumbnail: firstNonEmpty(video?.thumbnail, video?.thumbnailUrl, video?.still, video?.stillUrl, video?.image, video?.poster),
+    overview: firstNonEmpty(video?.overview, video?.description),
+    released: firstNonEmpty(video?.released, video?.releaseInfo),
+    runtimeMinutes: parseRuntimeMinutes(video?.runtimeMinutes ?? video?.runtime ?? 0)
+  };
+}
+
 function normalizeEpisodeEntries(videos = []) {
   return (Array.isArray(videos) ? videos : [])
-    .map((video) => ({
-      id: String(video?.id || "").trim(),
-      season: Number(video?.season || 0),
-      episode: Number(video?.episode || 0),
-      title: String(video?.title || video?.name || "").trim(),
-      thumbnail: firstNonEmpty(video?.thumbnail, video?.thumbnailUrl, video?.still, video?.stillUrl, video?.image, video?.poster),
-      overview: firstNonEmpty(video?.overview, video?.description),
-      released: firstNonEmpty(video?.released, video?.releaseInfo),
-      runtimeMinutes: parseRuntimeMinutes(video?.runtimeMinutes ?? video?.runtime ?? 0)
-    }))
+    .map((video) => normalizeEpisodeEntry(video))
     .filter((entry) => entry.season > 0 && entry.episode > 0)
     .sort((left, right) => {
       if (left.season !== right.season) {
@@ -1023,12 +1033,24 @@ function normalizeEpisodeEntries(videos = []) {
 }
 
 function findEpisodeEntry(videos = [], season = null, episode = null) {
-  const targetSeason = Number(season || 0);
+  const targetSeason = Number(season);
   const targetEpisode = Number(episode || 0);
-  if (targetSeason <= 0 || targetEpisode <= 0) {
+  if (
+    season == null ||
+    !Number.isFinite(targetSeason) ||
+    targetSeason < 0 ||
+    targetEpisode <= 0
+  ) {
     return null;
   }
-  return normalizeEpisodeEntries(videos).find((entry) => entry.season === targetSeason && entry.episode === targetEpisode) || null;
+  return (
+    (Array.isArray(videos) ? videos : [])
+      .filter((video) => video?.season != null || video?.seasonNumber != null)
+      .map((video) => normalizeEpisodeEntry(video))
+      .find(
+        (entry) => entry.season === targetSeason && entry.episode === targetEpisode
+      ) || null
+  );
 }
 
 function hasEpisodeAiredForContinueWatching(released) {
@@ -8638,7 +8660,10 @@ export const HomeScreen = {
       }
       const isSeries = isSeriesTypeForContinueWatching(contentType);
       const episodeMap =
-        settings.useEpisodes && isSeries && Number(item.season || 0) > 0
+        settings.useEpisodes &&
+        isSeries &&
+        item.season != null &&
+        Number(item.season) >= 0
           ? await withTimeout(
               TmdbMetadataService.fetchEpisodeEnrichment({
                 tmdbId,
@@ -8653,8 +8678,12 @@ export const HomeScreen = {
         episodeMap.size && Array.isArray(meta.videos)
           ? meta.videos.map((video) => {
               const key =
-                Number(video?.season || 0) > 0 && Number(video?.episode || 0) > 0
-                  ? `${Number(video.season)}:${Number(video.episode)}`
+                (video?.season != null || video?.seasonNumber != null) &&
+                Number(video?.season ?? video?.seasonNumber) >= 0 &&
+                Number(video?.episode ?? video?.episodeNumber ?? 0) > 0
+                  ? `${Number(video.season ?? video.seasonNumber)}:${Number(
+                      video.episode ?? video.episodeNumber
+                    )}`
                   : "";
               const episode = key ? episodeMap.get(key) : null;
               if (!episode) {

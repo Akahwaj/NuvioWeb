@@ -19223,6 +19223,11 @@ html.legacy-webos .debug-console-log-frame {
   margin: 6px 0 5px;
 }
 
+.legacy-webos .stream-route-card-badges-lazy {
+  height: 26px;
+  min-height: 26px;
+}
+
 .legacy-webos .stream-route-stream-badge {
   min-height: 26px;
   padding: 0 8px;
@@ -19391,6 +19396,13 @@ html.legacy-webos .debug-console-log-frame {
   gap: 6px;
   margin: 10px 0 8px;
   max-width: 100%;
+}
+
+.stream-route-card-badges-lazy {
+  flex-wrap: nowrap;
+  height: 30px;
+  min-height: 30px;
+  overflow: hidden;
 }
 
 .player-source-badges {

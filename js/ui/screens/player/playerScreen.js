@@ -2585,7 +2585,8 @@ export const PlayerScreen = {
     const rawImdbId = String(this.params?.imdbId || this.params?.imdb_id || "").trim();
     const rawItemId = String(this.params?.itemId || "").trim();
     const rawVideoId = String(this.params?.videoId || "").trim();
-    const season = Number(this.params?.season || 0);
+    const seasonRaw = this.params?.season;
+    const season = Number(seasonRaw);
     const episode = Number(this.params?.episode || 0);
     const imdbId = [
       normalizePlayableImdbId(rawImdbId),
@@ -2607,7 +2608,8 @@ export const PlayerScreen = {
       imdbId,
       tmdbId,
       traktId,
-      season: Number.isFinite(season) && season > 0 ? season : null,
+      season:
+        seasonRaw != null && Number.isFinite(season) && season >= 0 ? season : null,
       episode: Number.isFinite(episode) && episode > 0 ? episode : null
     };
   },
@@ -5564,9 +5566,16 @@ export const PlayerScreen = {
       }
     }
 
-    const season = Number(this.params?.season || 0);
+    const seasonRaw = this.params?.season;
+    const season = Number(seasonRaw);
     const episode = Number(this.params?.episode || 0);
-    if (Number.isFinite(season) && season > 0 && Number.isFinite(episode) && episode > 0) {
+    if (
+      seasonRaw != null &&
+      Number.isFinite(season) &&
+      season >= 0 &&
+      Number.isFinite(episode) &&
+      episode > 0
+    ) {
       return entries.find((entry) => (
         Number(entry?.season || 0) === season
         && Number(entry?.episode || 0) === episode
@@ -5595,7 +5604,12 @@ export const PlayerScreen = {
     );
     const season = Number(this.params?.season ?? episodeEntry?.season ?? metaEpisodeEntry?.season ?? 0);
     const episode = Number(this.params?.episode ?? episodeEntry?.episode ?? metaEpisodeEntry?.episode ?? 0);
-    const hasEpisodeContext = Number.isFinite(season) && season > 0 && Number.isFinite(episode) && episode > 0;
+    const hasEpisodeContext =
+      this.params?.season != null &&
+      Number.isFinite(season) &&
+      season >= 0 &&
+      Number.isFinite(episode) &&
+      episode > 0;
     const episodeCode = hasEpisodeContext ? `S${season}E${episode}` : "";
     const episodeTitle = cleanDisplayText(
       this.getDisplayEpisodeTitle()
@@ -5950,7 +5964,12 @@ export const PlayerScreen = {
     const title = String(this.params?.playerTitle || this.params?.itemTitle || this.params?.itemId || "Untitled").trim() || "Untitled";
     const season = this.params?.season == null ? null : Number(this.params.season);
     const episode = this.params?.episode == null ? null : Number(this.params.episode);
-    const hasEpisodeContext = Number.isFinite(season) && season > 0 && Number.isFinite(episode) && episode > 0;
+    const hasEpisodeContext =
+      this.params?.season != null &&
+      Number.isFinite(season) &&
+      season >= 0 &&
+      Number.isFinite(episode) &&
+      episode > 0;
     const episodeCode = hasEpisodeContext ? `S${season}E${episode}` : "";
     const episodeTitle = this.getDisplayEpisodeTitle();
     const subtitle = hasEpisodeContext
@@ -5986,22 +6005,26 @@ export const PlayerScreen = {
     }
 
     if (!nextEpisode && this.params?.videoId && this.episodes.length) {
-      const currentIndex = this.episodes.findIndex((episode) => String(episode?.id || "") === String(this.params?.videoId || ""));
-      if (currentIndex >= 0) {
-        nextEpisode = this.episodes[currentIndex + 1] || null;
-      }
+      const currentEpisode = this.episodes.find(
+        (episode) => String(episode?.id || "") === String(this.params?.videoId || "")
+      );
+      nextEpisode = this.getNextEpisodeInSequence(currentEpisode);
     }
 
     if (!nextEpisode && this.episodes.length) {
-      const currentSeason = Number(this.params?.season || 0);
+      const currentSeasonRaw = this.params?.season;
+      const currentSeason = Number(currentSeasonRaw);
       const currentEpisode = Number(this.params?.episode || 0);
-      if (currentSeason > 0 && currentEpisode > 0) {
-        const currentIndex = this.episodes.findIndex((episode) => (
+      if (
+        currentSeasonRaw != null &&
+        Number.isFinite(currentSeason) &&
+        currentSeason >= 0 &&
+        currentEpisode > 0
+      ) {
+        const currentEntry = this.episodes.find((episode) => (
           Number(episode?.season || 0) === currentSeason && Number(episode?.episode || 0) === currentEpisode
         ));
-        if (currentIndex >= 0) {
-          nextEpisode = this.episodes[currentIndex + 1] || null;
-        }
+        nextEpisode = this.getNextEpisodeInSequence(currentEntry);
       }
     }
 
@@ -6027,6 +6050,25 @@ export const PlayerScreen = {
     };
   },
 
+  getNextEpisodeInSequence(currentEpisode = null) {
+    if (!currentEpisode || !Array.isArray(this.episodes) || !this.episodes.length) {
+      return null;
+    }
+    const currentSeason = Number(currentEpisode?.season);
+    const sequence = this.episodes.filter((episode) =>
+      currentSeason === 0
+        ? Number(episode?.season) === 0
+        : Number(episode?.season) > 0
+    );
+    const currentIndex = sequence.findIndex(
+      (episode) =>
+        String(episode?.id || "") === String(currentEpisode?.id || "") ||
+        (Number(episode?.season || 0) === currentSeason &&
+          Number(episode?.episode || 0) === Number(currentEpisode?.episode || 0))
+    );
+    return currentIndex >= 0 ? sequence[currentIndex + 1] || null : null;
+  },
+
   resolveCurrentEpisodeEntry() {
     if (!Array.isArray(this.episodes) || !this.episodes.length) {
       return null;
@@ -6039,9 +6081,15 @@ export const PlayerScreen = {
       }
     }
 
-    const currentSeason = Number(this.params?.season || 0);
+    const currentSeasonRaw = this.params?.season;
+    const currentSeason = Number(currentSeasonRaw);
     const currentEpisode = Number(this.params?.episode || 0);
-    if (currentSeason <= 0 || currentEpisode <= 0) {
+    if (
+      currentSeasonRaw == null ||
+      !Number.isFinite(currentSeason) ||
+      currentSeason < 0 ||
+      currentEpisode <= 0
+    ) {
       return null;
     }
     return this.episodes.find((episode) => (
@@ -6127,9 +6175,9 @@ export const PlayerScreen = {
   buildDetailRouteParamsFromPlayer() {
     const itemType = normalizeItemType(this.params?.itemType || "movie");
     const currentEpisode = itemType === "series" ? this.resolveCurrentEpisodeEntry() : null;
-    const preferredSeason = itemType === "series"
-      ? Number(this.params?.season ?? currentEpisode?.season ?? 0)
-      : 0;
+    const preferredSeasonRaw =
+      itemType === "series" ? this.params?.season ?? currentEpisode?.season : null;
+    const preferredSeason = Number(preferredSeasonRaw);
     return {
       itemId: this.params?.itemId || null,
       itemType,
@@ -6137,7 +6185,12 @@ export const PlayerScreen = {
       imdbId: this.params?.imdbId || null,
       tmdbId: this.params?.tmdbId || this.params?.tmdb_id || null,
       traktId: this.params?.traktId || this.params?.trakt_id || null,
-      preferredSeason: Number.isFinite(preferredSeason) && preferredSeason > 0 ? preferredSeason : null
+      preferredSeason:
+        preferredSeasonRaw != null &&
+        Number.isFinite(preferredSeason) &&
+        preferredSeason >= 0
+          ? preferredSeason
+          : null
     };
   },
 

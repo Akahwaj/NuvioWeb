@@ -47,6 +47,8 @@ import { normalizeMathematicalAlphanumericSymbols } from "../../../core/streams/
 import { renderLoadingIndicator } from "../../components/loadingIndicator.js";
 
 const STREAM_BADGE_LIMIT = 9;
+const WEBOS_STREAM_BADGE_OVERSCAN_RATIO = 0.35;
+const WEBOS_STREAM_BADGE_MIN_OVERSCAN_PX = 180;
 const WEBOS_NATIVE_PLAYER_APP_IDS = [
   "com.webos.app.mediadiscovery",
   "com.webos.app.photovideo",
@@ -272,9 +274,14 @@ function formatBytes(value) {
 }
 
 function normalizeEpisodeCode(season, episode) {
-  const seasonNumber = Number(season || 0);
+  const seasonNumber = Number(season);
   const episodeNumber = Number(episode || 0);
-  if (seasonNumber <= 0 || episodeNumber <= 0) {
+  if (
+    season == null ||
+    !Number.isFinite(seasonNumber) ||
+    seasonNumber < 0 ||
+    episodeNumber <= 0
+  ) {
     return "";
   }
   return `S${seasonNumber} E${episodeNumber}`;
@@ -544,7 +551,11 @@ function renderImageBadgeChip(badge = {}) {
   `;
 }
 
-function renderImportedStreamBadgeChips(stream = {}, badges = [], showFileSizeBadges = true) {
+function renderImportedStreamBadgeChipContents(
+  stream = {},
+  badges = [],
+  showFileSizeBadges = true
+) {
   const sizeBytes = stream.behaviorHints?.videoSize;
   const chips = [];
   badges.slice(0, STREAM_BADGE_LIMIT).forEach((badge) => {
@@ -558,8 +569,17 @@ function renderImportedStreamBadgeChips(stream = {}, badges = [], showFileSizeBa
       `<span class="stream-route-stream-badge size">${escapeHtml(t("streams_size", [formatBytes(sizeBytes)], `SIZE ${formatBytes(sizeBytes)}`))}</span>`
     );
   }
-  return chips.length
-    ? `<div class="stream-route-card-badges" aria-label="${escapeHtml(t("settings_stream_badges_section", {}, "Fusion Style"))}">${chips.join("")}</div>`
+  return chips.join("");
+}
+
+function renderImportedStreamBadgeChips(stream = {}, badges = [], showFileSizeBadges = true) {
+  const contents = renderImportedStreamBadgeChipContents(
+    stream,
+    badges,
+    showFileSizeBadges
+  );
+  return contents
+    ? `<div class="stream-route-card-badges" aria-label="${escapeHtml(t("settings_stream_badges_section", {}, "Fusion Style"))}">${contents}</div>`
     : "";
 }
 
@@ -572,6 +592,34 @@ function renderStreamBadges(stream = {}, enabled = true, badgeSettings = null) {
   return renderImportedStreamBadgeChips(
     stream,
     importedBadges,
+    currentBadgeSettings.showFileSizeBadges !== false
+  );
+}
+
+function hasStreamBadges(stream = {}, enabled = true, badgeSettings = null) {
+  if (!enabled) {
+    return false;
+  }
+  const currentBadgeSettings = badgeSettings || StreamBadgeSettingsStore.snapshot();
+  if (
+    currentBadgeSettings.showFileSizeBadges !== false &&
+    stream.behaviorHints?.videoSize != null
+  ) {
+    return true;
+  }
+  return matchStreamBadges(stream, currentBadgeSettings.rules).some(
+    (badge) => normalizeAddonLogoUrl(badge.imageURL)
+  );
+}
+
+function renderStreamBadgeContents(stream = {}, enabled = true, badgeSettings = null) {
+  if (!enabled) {
+    return "";
+  }
+  const currentBadgeSettings = badgeSettings || StreamBadgeSettingsStore.snapshot();
+  return renderImportedStreamBadgeChipContents(
+    stream,
+    matchStreamBadges(stream, currentBadgeSettings.rules),
     currentBadgeSettings.showFileSizeBadges !== false
   );
 }
@@ -653,6 +701,10 @@ export const StreamScreen = {
     if (this.renderFrame) {
       cancelAnimationFrame(this.renderFrame);
       this.renderFrame = null;
+    }
+    if (this.streamBadgeHydrationFrame) {
+      cancelAnimationFrame(this.streamBadgeHydrationFrame);
+      this.streamBadgeHydrationFrame = null;
     }
   },
 
@@ -1727,6 +1779,7 @@ export const StreamScreen = {
         return;
       }
       this.ensureListItemVisible(listNode, target);
+      this.requestStreamBadgeHydration();
     };
     if (typeof requestAnimationFrame === "function") {
       requestAnimationFrame(run);
@@ -2080,7 +2133,11 @@ export const StreamScreen = {
   renderStreamCard(stream, index, streamBadgesEnabled = true, badgeSettings = null) {
     const headline = getStreamHeadline(stream);
     const quality = getStreamQuality(stream);
-    const badges = renderStreamBadges(stream, streamBadgesEnabled, badgeSettings);
+    const lazyBadges =
+      Environment.isWebOS() && hasStreamBadges(stream, streamBadgesEnabled, badgeSettings);
+    const badges = lazyBadges
+      ? `<div class="stream-route-card-badges stream-route-card-badges-lazy" data-lazy-stream-badges data-stream-badge-row="${index}" data-badges-hydrated="false" aria-label="${escapeHtml(t("settings_stream_badges_section", {}, "Fusion Style"))}"></div>`
+      : renderStreamBadges(stream, streamBadgesEnabled, badgeSettings);
     const showAddonLogo = badgeSettings?.showAddonLogo === true;
     const badgePlacement = resolveStreamBadgePlacement(badgeSettings);
     const topBadges = badgePlacement === "TOP" ? badges : "";
@@ -2229,6 +2286,8 @@ export const StreamScreen = {
       </div>
     `;
 
+    this.restoreScrollPosition();
+    this.hydrateVisibleStreamBadges();
     this.bindAddonLogoFallbacks();
     ScreenUtils.indexFocusables(this.container);
     this.restoreScrollPosition();
@@ -2246,6 +2305,7 @@ export const StreamScreen = {
       "scroll",
       () => {
         this.listScrollTop = this.getListScrollTop(list);
+        this.requestStreamBadgeHydration();
       },
       { passive: true }
     );
@@ -2261,10 +2321,81 @@ export const StreamScreen = {
           }
           event?.preventDefault?.();
           this.setListScrollTop(list, this.getListScrollTop(list) + deltaY);
+          this.requestStreamBadgeHydration();
         },
         { passive: false }
       );
     }
+  },
+
+  requestStreamBadgeHydration() {
+    if (
+      !Environment.isWebOS() ||
+      Router.getCurrent() !== "stream" ||
+      this.streamBadgeHydrationFrame
+    ) {
+      return;
+    }
+    this.streamBadgeHydrationFrame = requestAnimationFrame(() => {
+      this.streamBadgeHydrationFrame = null;
+      this.hydrateVisibleStreamBadges();
+    });
+  },
+
+  hydrateVisibleStreamBadges() {
+    if (
+      !Environment.isWebOS() ||
+      Router.getCurrent() !== "stream" ||
+      !this.container
+    ) {
+      return;
+    }
+    const list = this.container.querySelector(".stream-route-list");
+    const placeholders = Array.from(
+      this.container.querySelectorAll("[data-lazy-stream-badges]")
+    );
+    if (!list || !placeholders.length) {
+      return;
+    }
+    const filtered = this.getFilteredStreams();
+    const streamBadgesEnabled = DebridSettingsStore.get().streamBadgesEnabled !== false;
+    const badgeSettings = StreamBadgeSettingsStore.snapshot();
+    const listRect = list.getBoundingClientRect();
+    const overscan = Math.max(
+      WEBOS_STREAM_BADGE_MIN_OVERSCAN_PX,
+      Number(list.clientHeight || 0) * WEBOS_STREAM_BADGE_OVERSCAN_RATIO
+    );
+    const viewportTop = Number(listRect?.top || 0) - overscan;
+    const viewportBottom = Number(listRect?.bottom || 0) + overscan;
+    const focusedRow =
+      this.focusState?.zone === "card" ? Number(this.focusState?.row || 0) : -1;
+
+    // Android's LazyColumn only composes badge images near the viewport. Keep
+    // the complete Web card list for existing remote/pointer navigation, but
+    // apply the same bounded image/DOM lifetime on webOS.
+    placeholders.forEach((placeholder) => {
+      const rowIndex = Number(placeholder.dataset.streamBadgeRow || -1);
+      const card = placeholder.closest(".stream-route-card-row");
+      const cardRect = card?.getBoundingClientRect?.();
+      const nearViewport = Boolean(
+        cardRect &&
+          Number(cardRect.bottom || 0) >= viewportTop &&
+          Number(cardRect.top || 0) <= viewportBottom
+      );
+      const shouldHydrate = rowIndex === focusedRow || nearViewport;
+      const hydrated = placeholder.dataset.badgesHydrated === "true";
+      if (shouldHydrate && !hydrated) {
+        placeholder.innerHTML = renderStreamBadgeContents(
+          filtered[rowIndex],
+          streamBadgesEnabled,
+          badgeSettings
+        );
+        placeholder.dataset.badgesHydrated = "true";
+      } else if (!shouldHydrate && hydrated) {
+        placeholder.textContent = "";
+        placeholder.dataset.badgesHydrated = "false";
+      }
+    });
   },
 
   bindAddonLogoFallbacks() {
