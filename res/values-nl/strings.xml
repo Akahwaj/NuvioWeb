@@ -932,4 +932,12 @@
     <string name="unsupported_device_required_platform">Vereist platform</string>
     <string name="unsupported_device_close">Sluiten</string>
     <string name="unsupported_device_unavailable">Niet beschikbaar</string>
+    <string name="subtitle_position">Ondertitelpositie</string>
+    <string name="subtitle_position_subtitle">Verplaats ondertitels omhoog of omlaag op het scherm.</string>
+    <string name="subtitle_font_size_subtitle">Tekstgrootte die tijdens het afspelen voor ondertitels wordt gebruikt.</string>
+    <string name="subtitle_bold_subtitle">Ondertiteltekst vet weergeven.</string>
+    <string name="subtitle_outline_subtitle">Teken een rand rond de ondertiteltekst voor betere leesbaarheid.</string>
+    <string name="subtitle_outline_color_subtitle">Kleur van de ondertitelrand.</string>
+    <string name="subtitle_text_color_subtitle">Kleur van de ondertiteltekst.</string>
+    <string name="player_error_web_headers_unsupported">Deze bron is niet compatibel met de speler van dit apparaat omdat er speciale request-headers nodig zijn. Probeer een andere bron of neem contact op met de add-on-aanbieder.</string>
 </resources>

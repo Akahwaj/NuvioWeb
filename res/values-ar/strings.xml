@@ -1374,4 +1374,12 @@
     <string name="unsupported_device_required_platform">النظام المطلوب</string>
     <string name="unsupported_device_close">إغلاق</string>
     <string name="unsupported_device_unavailable">غير متاح</string>
+    <string name="subtitle_position">موضع الترجمة</string>
+    <string name="subtitle_position_subtitle">حرّك الترجمة لأعلى أو لأسفل على الشاشة.</string>
+    <string name="subtitle_font_size_subtitle">حجم النص المستخدم للترجمة أثناء التشغيل.</string>
+    <string name="subtitle_bold_subtitle">عرض نص الترجمة بخط عريض.</string>
+    <string name="subtitle_outline_subtitle">رسم إطار حول نص الترجمة لتحسين وضوح القراءة.</string>
+    <string name="subtitle_outline_color_subtitle">لون إطار الترجمة.</string>
+    <string name="subtitle_text_color_subtitle">لون نص الترجمة.</string>
+    <string name="player_error_web_headers_unsupported">هذا المصدر غير متوافق مع مشغّل هذا الجهاز لأنه يتطلب ترويسات طلب خاصة. جرّب مصدرًا آخر أو تواصل مع مزوّد الإضافة.</string>
 </resources>

@@ -1056,4 +1056,12 @@
     <string name="unsupported_device_required_platform">आवश्यक प्लेटफ़ॉर्म</string>
     <string name="unsupported_device_close">बंद करें</string>
     <string name="unsupported_device_unavailable">उपलब्ध नहीं</string>
+    <string name="subtitle_position">उपशीर्षक स्थिति</string>
+    <string name="subtitle_position_subtitle">उपशीर्षक को स्क्रीन पर ऊपर या नीचे ले जाएँ।</string>
+    <string name="subtitle_font_size_subtitle">प्लेबैक के दौरान उपशीर्षक के लिए उपयोग किया जाने वाला टेक्स्ट आकार।</string>
+    <string name="subtitle_bold_subtitle">उपशीर्षक टेक्स्ट को बोल्ड में दिखाएँ।</string>
+    <string name="subtitle_outline_subtitle">पठनीयता के लिए उपशीर्षक टेक्स्ट के चारों ओर आउटलाइन बनाएँ।</string>
+    <string name="subtitle_outline_color_subtitle">उपशीर्षक आउटलाइन का रंग।</string>
+    <string name="subtitle_text_color_subtitle">उपशीर्षक टेक्स्ट का रंग।</string>
+    <string name="player_error_web_headers_unsupported">यह स्रोत इस डिवाइस के प्लेयर के साथ संगत नहीं है क्योंकि इसके लिए विशेष अनुरोध हेडर आवश्यक हैं। कोई अन्य स्रोत आज़माएँ या ऐड-ऑन प्रदाता से संपर्क करें।</string>
 </resources>

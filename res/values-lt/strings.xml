@@ -934,4 +934,12 @@ Klaida: Bandomoji simuliuojama klaida — tai nėra tikras gedimas. Šaltinis gr
     <string name="unsupported_device_required_platform">Reikalinga platforma</string>
     <string name="unsupported_device_close">Uždaryti</string>
     <string name="unsupported_device_unavailable">Nepasiekiama</string>
+    <string name="subtitle_position">Subtitrų padėtis</string>
+    <string name="subtitle_position_subtitle">Perkelkite subtitrus aukštyn arba žemyn ekrane.</string>
+    <string name="subtitle_font_size_subtitle">Teksto dydis, naudojamas subtitrams atkūrimo metu.</string>
+    <string name="subtitle_bold_subtitle">Rodyti subtitrų tekstą paryškintą.</string>
+    <string name="subtitle_outline_subtitle">Nubrėžti kontūrą aplink subtitrų tekstą, kad būtų geriau įskaitoma.</string>
+    <string name="subtitle_outline_color_subtitle">Subtitrų kontūro spalva.</string>
+    <string name="subtitle_text_color_subtitle">Subtitrų teksto spalva.</string>
+    <string name="player_error_web_headers_unsupported">Šis šaltinis nesuderinamas su šio įrenginio grotuvu, nes jam reikia specialių užklausos antraščių. Išbandykite kitą šaltinį arba susisiekite su priedo teikėju.</string>
 </resources>
