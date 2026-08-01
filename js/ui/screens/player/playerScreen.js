@@ -6765,6 +6765,10 @@ export const PlayerScreen = {
 
   buildDetailRouteParamsFromPlayer() {
     const itemType = normalizeItemType(this.params?.itemType || "movie");
+    const streamRouteParams =
+      this.params?.streamRouteParams && typeof this.params.streamRouteParams === "object"
+        ? this.params.streamRouteParams
+        : null;
     const currentEpisode = itemType === "series" ? this.resolveCurrentEpisodeEntry() : null;
     const preferredSeasonRaw =
       itemType === "series" ? (this.params?.season ?? currentEpisode?.season) : null;
@@ -6777,6 +6781,9 @@ export const PlayerScreen = {
       imdbId: this.params?.imdbId || null,
       tmdbId: this.params?.tmdbId || this.params?.tmdb_id || null,
       traktId: this.params?.traktId || this.params?.trakt_id || null,
+      returnToSearchOnBack: Boolean(
+        this.params?.returnToSearchOnBack || streamRouteParams?.returnToSearchOnBack
+      ),
       preferredSeason:
         preferredSeasonRaw != null && Number.isFinite(preferredSeason) && preferredSeason >= 0
           ? preferredSeason

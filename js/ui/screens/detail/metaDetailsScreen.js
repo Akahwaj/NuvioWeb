@@ -2446,11 +2446,27 @@ export const MetaDetailsScreen = {
   },
 
   getStreamNavigationOptions() {
-    // Continue Watching mounts Detail only to resolve the Stream target.
-    return this.params?.autoOpenContinueWatching ? { skipStackPush: true } : {};
+    // Continue Watching mounts Detail only to resolve the Stream target. Replace
+    // that transient browser-history entry too, otherwise it can resurface after
+    // the user returns Home and opens a different title.
+    return this.params?.autoOpenContinueWatching
+      ? { skipStackPush: true, replaceHistory: true }
+      : {};
   },
 
   navigateBackFromDetail() {
+    if (this.params?.returnToSearchOnBack) {
+      Router.navigate(
+        "search",
+        {},
+        {
+          isBackNavigation: true,
+          skipStackPush: true,
+          replaceHistory: true
+        }
+      );
+      return true;
+    }
     if (this.params?.returnHomeOnBack) {
       Router.navigate(
         "home",
@@ -7050,6 +7066,7 @@ export const MetaDetailsScreen = {
       tmdbId,
       traktId,
       contentLanguage,
+      returnToSearchOnBack: Boolean(this.params?.returnToSearchOnBack),
       videoId: pending.videoId,
       season: pending.episode?.season ?? null,
       episode: pending.episode?.episode ?? null,
@@ -7126,6 +7143,7 @@ export const MetaDetailsScreen = {
         traktId,
         contentLanguage,
         originalItemId: this.params?.originalItemId || null,
+        returnToSearchOnBack: Boolean(this.params?.returnToSearchOnBack),
         returnToDetail: true,
         fromDetailRoute: true,
         itemTitle:
@@ -7180,6 +7198,7 @@ export const MetaDetailsScreen = {
         traktId,
         contentLanguage,
         originalItemId: this.params?.originalItemId || null,
+        returnToSearchOnBack: Boolean(this.params?.returnToSearchOnBack),
         returnToDetail: true,
         fromDetailRoute: true,
         itemTitle:
@@ -7226,6 +7245,7 @@ export const MetaDetailsScreen = {
       tmdbId,
       traktId,
       contentLanguage,
+      returnToSearchOnBack: Boolean(this.params?.returnToSearchOnBack),
       season: null,
       episode: null,
       playerTitle:
@@ -8914,6 +8934,7 @@ export const MetaDetailsScreen = {
         tmdbId,
         traktId,
         contentLanguage,
+        returnToSearchOnBack: Boolean(this.params?.returnToSearchOnBack),
         season: this.nextEpisodeToWatch?.season ?? null,
         episode: this.nextEpisodeToWatch?.episode ?? null,
         playerTitle:
