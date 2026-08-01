@@ -1395,4 +1395,12 @@
     <string name="still_watching_setting_sub">Prikaži upit nakon uzastopno automatski reproduciranih epizoda.</string>
     <string name="still_watching_threshold_title">Prag epizoda</string>
     <string name="still_watching_threshold_sub">Broj automatski reproduciranih epizoda prije prikazivanja upita.</string>
+    <string name="subtitle_position">Pozicija titlova</string>
+    <string name="subtitle_position_subtitle">Pomjeri titlove gore ili dolje na ekranu.</string>
+    <string name="subtitle_font_size_subtitle">Veličina teksta koja se koristi za titlove tokom reprodukcije.</string>
+    <string name="subtitle_bold_subtitle">Prikaži tekst titlova podebljano.</string>
+    <string name="subtitle_outline_subtitle">Nacrtaj obris oko teksta titlova radi bolje čitljivosti.</string>
+    <string name="subtitle_outline_color_subtitle">Boja obrisa titlova.</string>
+    <string name="subtitle_text_color_subtitle">Boja teksta titlova.</string>
+    <string name="player_error_web_headers_unsupported">Ovaj izvor nije kompatibilan s plejerom ovog uređaja jer zahtijeva posebna zaglavlja zahtjeva. Pokušajte s drugim izvorom ili kontaktirajte pružatelja dodatka.</string>
 </resources>

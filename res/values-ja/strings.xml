@@ -1247,4 +1247,12 @@
     <string name="still_watching_setting_sub">連続自動再生エピソード後にプロンプトを表示します。</string>
     <string name="still_watching_threshold_title">エピソードしきい値</string>
     <string name="still_watching_threshold_sub">プロンプト表示前の自動再生エピソード数。</string>
+    <string name="subtitle_position">字幕の位置</string>
+    <string name="subtitle_position_subtitle">字幕を画面の上下に移動します。</string>
+    <string name="subtitle_font_size_subtitle">再生中に字幕に使用される文字サイズ。</string>
+    <string name="subtitle_bold_subtitle">字幕テキストを太字で表示します。</string>
+    <string name="subtitle_outline_subtitle">読みやすくするために字幕テキストの周囲にアウトラインを描画します。</string>
+    <string name="subtitle_outline_color_subtitle">字幕のアウトラインの色。</string>
+    <string name="subtitle_text_color_subtitle">字幕テキストの色。</string>
+    <string name="player_error_web_headers_unsupported">このソースは特別なリクエストヘッダーを必要とするため、このデバイスのプレーヤーと互換性がありません。別のソースを試すか、アドオンの提供元にお問い合わせください。</string>
 </resources>

@@ -1116,4 +1116,12 @@
     <string name="still_watching_setting_sub">Mostrar aviso después de varios episodios reproducidos automáticamente.</string>
     <string name="still_watching_threshold_title">Límite de episodios</string>
     <string name="still_watching_threshold_sub">Cantidad de episodios reproducidos automáticamente antes de mostrar el aviso.</string>
+    <string name="subtitle_position">Posición de subtítulos</string>
+    <string name="subtitle_position_subtitle">Mueve los subtítulos hacia arriba o hacia abajo en la pantalla.</string>
+    <string name="subtitle_font_size_subtitle">Tamaño del texto usado para los subtítulos durante la reproducción.</string>
+    <string name="subtitle_bold_subtitle">Muestra el texto de los subtítulos en negrita.</string>
+    <string name="subtitle_outline_subtitle">Dibuja un contorno alrededor del texto de los subtítulos para mejorar la legibilidad.</string>
+    <string name="subtitle_outline_color_subtitle">Color del contorno de los subtítulos.</string>
+    <string name="subtitle_text_color_subtitle">Color del texto de los subtítulos.</string>
+    <string name="player_error_web_headers_unsupported">Esta fuente no es compatible con el reproductor de este dispositivo porque requiere encabezados de solicitud especiales. Prueba con otra fuente o contacta con el proveedor del complemento.</string>
 </resources>

@@ -1830,4 +1830,12 @@
     <string name="still_watching_setting_sub">Zeptat se po sobě jdoucích automaticky přehraných epizodách.</string>
     <string name="still_watching_threshold_title">Práh počtu epizod</string>
     <string name="still_watching_threshold_sub">Počet automaticky přehraných epizod, po kterém se zobrazí dotaz.</string>
+    <string name="subtitle_position">Pozice titulků</string>
+    <string name="subtitle_position_subtitle">Posune titulky nahoru nebo dolů po obrazovce.</string>
+    <string name="subtitle_font_size_subtitle">Velikost textu použitá pro titulky během přehrávání.</string>
+    <string name="subtitle_bold_subtitle">Zobrazit text titulků tučně.</string>
+    <string name="subtitle_outline_subtitle">Vykreslit obrys kolem textu titulků pro lepší čitelnost.</string>
+    <string name="subtitle_outline_color_subtitle">Barva obrysu titulků.</string>
+    <string name="subtitle_text_color_subtitle">Barva textu titulků.</string>
+    <string name="player_error_web_headers_unsupported">Tento zdroj není kompatibilní s přehrávačem tohoto zařízení, protože vyžaduje speciální hlavičky požadavku. Zkuste jiný zdroj nebo kontaktujte poskytovatele doplňku.</string>
 </resources>

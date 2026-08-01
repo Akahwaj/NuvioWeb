@@ -1385,4 +1385,12 @@
     <string name="still_watching_setting_sub">إظهار تنبيه بعد تشغيل عدة حلقات متتالية تلقائياً.</string>
     <string name="still_watching_threshold_title">عدد الحلقات المتتالية</string>
     <string name="still_watching_threshold_sub">عدد الحلقات التلقائية المطلوبة لإظهار التنبيه.</string>
+    <string name="subtitle_position">موضع الترجمة</string>
+    <string name="subtitle_position_subtitle">حرّك الترجمة لأعلى أو لأسفل على الشاشة.</string>
+    <string name="subtitle_font_size_subtitle">حجم النص المستخدم للترجمة أثناء التشغيل.</string>
+    <string name="subtitle_bold_subtitle">عرض نص الترجمة بخط عريض.</string>
+    <string name="subtitle_outline_subtitle">رسم إطار حول نص الترجمة لتحسين وضوح القراءة.</string>
+    <string name="subtitle_outline_color_subtitle">لون إطار الترجمة.</string>
+    <string name="subtitle_text_color_subtitle">لون نص الترجمة.</string>
+    <string name="player_error_web_headers_unsupported">هذا المصدر غير متوافق مع مشغّل هذا الجهاز لأنه يتطلب ترويسات طلب خاصة. جرّب مصدرًا آخر أو تواصل مع مزوّد الإضافة.</string>
 </resources>

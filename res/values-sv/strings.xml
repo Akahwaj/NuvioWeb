@@ -1443,4 +1443,12 @@
     <string name="still_watching_setting_sub">Fråga efter flera automatiskt uppspelade avsnitt i följd.</string>
     <string name="still_watching_threshold_title">Avsnittsgräns</string>
     <string name="still_watching_threshold_sub">Antal automatiskt uppspelade avsnitt innan frågan visas.</string>
+    <string name="subtitle_position">Undertextposition</string>
+    <string name="subtitle_position_subtitle">Flytta undertexterna uppåt eller nedåt på skärmen.</string>
+    <string name="subtitle_font_size_subtitle">Textstorlek som används för undertexter under uppspelning.</string>
+    <string name="subtitle_bold_subtitle">Visa undertexten med fet stil.</string>
+    <string name="subtitle_outline_subtitle">Rita en kontur runt undertexten för bättre läsbarhet.</string>
+    <string name="subtitle_outline_color_subtitle">Färg på undertextens kontur.</string>
+    <string name="subtitle_text_color_subtitle">Färg på undertextens text.</string>
+    <string name="player_error_web_headers_unsupported">Den här källan är inte kompatibel med enhetens spelare eftersom den kräver särskilda begäranshuvuden. Prova en annan källa eller kontakta tilläggets leverantör.</string>
 </resources>

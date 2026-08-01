@@ -974,4 +974,12 @@
     <string name="still_watching_setting_sub">הצג בקשה לאחר פרקים שהופעלו אוטומטית ברצף.</string>
     <string name="still_watching_threshold_title">סף פרקים</string>
     <string name="still_watching_threshold_sub">מספר הפרקים שיופעלו אוטומטית לפני הצגת הבקשה.</string>
+    <string name="subtitle_position">מיקום הכתוביות</string>
+    <string name="subtitle_position_subtitle">הזז את הכתוביות למעלה או למטה על המסך.</string>
+    <string name="subtitle_font_size_subtitle">גודל הטקסט שבו משתמשים בכתוביות במהלך ההפעלה.</string>
+    <string name="subtitle_bold_subtitle">הצג את טקסט הכתוביות בהדגשה.</string>
+    <string name="subtitle_outline_subtitle">צייר מתאר סביב טקסט הכתוביות לשיפור הקריאות.</string>
+    <string name="subtitle_outline_color_subtitle">צבע המתאר של הכתוביות.</string>
+    <string name="subtitle_text_color_subtitle">צבע הטקסט של הכתוביות.</string>
+    <string name="player_error_web_headers_unsupported">מקור זה אינו תואם לנגן של מכשיר זה מכיוון שהוא דורש כותרות בקשה מיוחדות. נסה מקור אחר או פנה לספק התוסף.</string>
 </resources>
