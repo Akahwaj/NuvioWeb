@@ -7047,7 +7047,7 @@ export const HomeScreen = {
     this.modernVerticalFastScrollState = null;
     if (land && state?.direction) {
       this.landModernVerticalFastScroll(state.direction);
-      this.scheduleHomeLazyImageHydration(this.getCurrentFocusedNode());
+      this.scheduleHomeLazyImageHydration();
     }
   },
 
@@ -9085,6 +9085,8 @@ export const HomeScreen = {
   scheduleHomeLazyImageHydration(anchorNode = null) {
     if (anchorNode instanceof HTMLElement) {
       this.pendingHomeLazyImageAnchor = anchorNode;
+    } else {
+      this.homeLazyImageHydrationNeedsFullScan = true;
     }
     if (this.modernVerticalFastScrollState) {
       return;
@@ -9096,14 +9098,30 @@ export const HomeScreen = {
       this.homeLazyImageHydrationRaf = 0;
       const anchor = this.pendingHomeLazyImageAnchor || this.getCurrentFocusedNode();
       this.pendingHomeLazyImageAnchor = null;
-      this.hydrateHomeLazyImages(anchor);
+      const forceFullScan = Boolean(this.homeLazyImageHydrationNeedsFullScan);
+      this.homeLazyImageHydrationNeedsFullScan = false;
+      this.hydrateHomeLazyImages(anchor, { forceFullScan });
     });
   },
 
-  hydrateHomeLazyImages(anchorNode = null) {
+  hydrateHomeLazyImages(anchorNode = null, { forceFullScan = false } = {}) {
     if (!this.container) {
       return;
     }
+    const rowSelector = ".home-row, .home-modern-row, .home-grid-section, .home-row-continue";
+    const anchorRow = anchorNode?.closest?.(rowSelector) || null;
+    if (
+      !forceFullScan &&
+      anchorRow instanceof HTMLElement &&
+      anchorRow === this.lastHomeLazyImageHydrationAnchorRow
+    ) {
+      // The first pass for a focused row hydrates every image in that row. On
+      // subsequent horizontal moves, the viewport geometry for every other row
+      // is unchanged, so rescanning and measuring all distant lazy images only
+      // repeats work on the D-pad hot path.
+      return;
+    }
+    this.lastHomeLazyImageHydrationAnchorRow = anchorRow;
     const images = Array.from(
       this.container.querySelectorAll(
         ".home-main .content-poster[data-src], .home-main .home-poster-landscape-logo[data-src], .home-main .home-continue-bg[data-src]"
@@ -9117,13 +9135,8 @@ export const HomeScreen = {
       this.container.querySelector(".home-main") ||
       this.container;
     const viewportRect = viewport.getBoundingClientRect();
-    const anchorRow =
-      anchorNode?.closest?.(
-        ".home-row, .home-modern-row, .home-grid-section, .home-row-continue"
-      ) || null;
     const verticalMargin = Platform.isWebOS() || Platform.isTizen() ? 720 : 1200;
     const horizontalMargin = Platform.isWebOS() || Platform.isTizen() ? 520 : 1000;
-    const rowSelector = ".home-row, .home-modern-row, .home-grid-section, .home-row-continue";
     const imagesByRow = new Map();
     images.forEach((image) => {
       const row = image.closest(rowSelector);
@@ -10304,7 +10317,7 @@ export const HomeScreen = {
       this.invalidateNavigationModel();
       this.buildNavigationModel();
     }
-    this.scheduleHomeLazyImageHydration(this.getCurrentFocusedNode());
+    this.scheduleHomeLazyImageHydration();
     return true;
   },
 
@@ -10513,7 +10526,7 @@ export const HomeScreen = {
             this.invalidateNavigationModel();
             this.buildNavigationModel();
           }
-          this.scheduleHomeLazyImageHydration(this.getCurrentFocusedNode());
+          this.scheduleHomeLazyImageHydration();
           return true;
         };
         if (totalVisible < currentItems.length) {
@@ -10750,6 +10763,8 @@ export const HomeScreen = {
       this.homeLazyImageHydrationRaf = 0;
     }
     this.pendingHomeLazyImageAnchor = null;
+    this.homeLazyImageHydrationNeedsFullScan = false;
+    this.lastHomeLazyImageHydrationAnchorRow = null;
     this.lastDirectionalKeyAtByDirection = {};
     this.homeTruncationScope = null;
     if (this.boundHomeEventContainer) {

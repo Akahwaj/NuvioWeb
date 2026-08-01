@@ -1814,6 +1814,21 @@ export const MetaDetailsScreen = {
     void this.refreshTrailerSource(meta, token);
     void this.loadTraktComments({ force: true });
 
+    // Match Android TV: recommendations are an independent detail-page job.
+    // Starting them from the base meta keeps slower artwork/credits enrichment
+    // (and its optional cast fallback) from delaying or starving this section.
+    void withTimeout(this.fetchMoreLikeThis(meta), 5000, [])
+      .then((items) => {
+        if (token !== this.detailLoadToken) {
+          return;
+        }
+        this.moreLikeThisItems = Array.isArray(items) ? items : [];
+        this.updateRenderedDetailSections(this.meta || meta);
+      })
+      .catch((error) => {
+        console.warn("More like this background load failed", error);
+      });
+
     // Background enrichments: do not block initial screen rendering.
     (async () => {
       const enrichedMeta = await withTimeout(this.enrichMeta(meta), 4000, meta);
@@ -1843,7 +1858,7 @@ export const MetaDetailsScreen = {
       void this.refreshTrailerSource(this.meta, token);
       void this.loadTraktComments({ force: true });
 
-      const tasks = [withTimeout(this.fetchMoreLikeThis(this.meta), 5000, [])];
+      const tasks = [];
       if (isSeriesDetailMeta(this.meta, this.episodes)) {
         tasks.push(withTimeout(this.fetchSeriesRatingsBySeason(this.meta), 5000, {}));
         const traktId = this.meta?.ids?.trakt;
@@ -1882,19 +1897,18 @@ export const MetaDetailsScreen = {
       if (token !== this.detailLoadToken) {
         return;
       }
-      this.moreLikeThisItems = Array.isArray(results[0]) ? results[0] : [];
       if (isSeriesDetailMeta(this.meta, this.episodes)) {
-        this.seriesRatingsBySeason = results[1] || {};
-        if (this.meta?.ids?.trakt && results[2] instanceof Map) {
-          this.enrichedWatchedState = results[2];
+        this.seriesRatingsBySeason = results[0] || {};
+        if (this.meta?.ids?.trakt && results[1] instanceof Map) {
+          this.enrichedWatchedState = results[1];
           this.buildEpisodeState(allProgressItems, allWatchedItems, this.enrichedWatchedState);
           this.updateRenderedDetailSections(this.meta);
         }
       } else {
-        this.collectionItems = Array.isArray(results[1]?.items) ? results[1].items : [];
-        this.collectionName = results[1]?.name || "";
-        if (this.meta?.ids?.trakt && results[2]) {
-          this.enrichedMovieState = results[2];
+        this.collectionItems = Array.isArray(results[0]?.items) ? results[0].items : [];
+        this.collectionName = results[0]?.name || "";
+        if (this.meta?.ids?.trakt && results[1]) {
+          this.enrichedMovieState = results[1];
           this.isMarkedWatched = Boolean(this.enrichedMovieState?.isWatched);
           this.updateRenderedDetailSections(this.meta);
         }
@@ -1934,13 +1948,21 @@ export const MetaDetailsScreen = {
       if (!settings.enabled || !settings.useMoreLikeThis) {
         return [];
       }
-      const type = isSeriesDetailMeta(meta)
-        ? meta?.type === "tv"
-          ? "series"
-          : meta?.type || "series"
-        : meta?.type || "movie";
+      // Android resolves the route type first, then the meta type, and treats
+      // both `tv` and `series` as TMDB TV content even when episodes are absent.
+      const routeType = String(this.params?.itemType || "").toLowerCase();
+      const metaType = String(meta?.type || "").toLowerCase();
+      const seriesTypes = ["series", "tv", "show", "tvshow"];
+      const movieTypes = ["movie", "film"];
+      const resolvedType = [...seriesTypes, ...movieTypes].includes(routeType)
+        ? routeType
+        : [...seriesTypes, ...movieTypes].includes(metaType)
+          ? metaType
+          : "movie";
+      const type = seriesTypes.includes(resolvedType) ? "series" : "movie";
       const tmdbId =
         (await TmdbService.ensureTmdbId(meta?.id, type)) ||
+        (await TmdbService.ensureTmdbId(this.params?.itemId, type)) ||
         (await this.searchTmdbIdByTitle(meta, type));
       if (!tmdbId) {
         return [];
