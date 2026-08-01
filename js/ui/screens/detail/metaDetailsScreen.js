@@ -28,6 +28,7 @@ import {
 import { I18n } from "../../../i18n/index.js";
 import { NuvioDialog } from "../../components/nuvioDialog.js";
 import { renderLoadingIndicator } from "../../components/loadingIndicator.js";
+import { resolveMovieStreamIdentity } from "./movieStreamIdentity.js";
 import {
   posterItemFromNode,
   PosterOptionsDialogController
@@ -7163,6 +7164,7 @@ export const MetaDetailsScreen = {
     const streamBackdrop =
       this.meta?.background || this.meta?.landscapePoster || this.meta?.poster || null;
     const itemType = resolvePlayableDetailType(this.params?.itemType || this.meta?.type, this.meta);
+    const { itemId, videoId } = resolveMovieStreamIdentity(this.meta, this.params);
     const imdbId = resolveMetaImdbId(this.meta, this.params);
     const tmdbId = resolveMetaTmdbId(this.meta, this.params);
     const traktId = resolveMetaTraktId(this.meta, this.params);
@@ -7171,7 +7173,7 @@ export const MetaDetailsScreen = {
     Router.navigate(
       "stream",
       {
-        itemId: this.params?.itemId || null,
+        itemId,
         itemType,
         imdbId,
         tmdbId,
@@ -7190,9 +7192,8 @@ export const MetaDetailsScreen = {
         logo: this.meta?.logo || null,
         parentalWarnings: this.meta?.parentalWarnings || null,
         parentalGuide: this.meta?.parentalGuide || null,
-        videoId: this.params?.itemId || null,
-        preferredStreamId:
-          StreamPreferencesStore.get(this.params?.itemId, this.params?.itemId) || null,
+        videoId,
+        preferredStreamId: StreamPreferencesStore.get(itemId, videoId) || null,
         episodes: [],
         ...extraParams
       },
