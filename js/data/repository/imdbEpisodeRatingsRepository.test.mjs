@@ -26,9 +26,7 @@ test("keeps ratings for season zero specials like Android TV", () => {
   assert.deepEqual(
     mapRatingsPayload([
       {
-        episodes: [
-          { season_number: 0, episode_number: 1, vote_average: 7.2 }
-        ]
+        episodes: [{ season_number: 0, episode_number: 1, vote_average: 7.2 }]
       }
     ]),
     {

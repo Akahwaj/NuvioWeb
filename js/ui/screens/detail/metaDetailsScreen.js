@@ -11,10 +11,7 @@ import { TmdbService } from "../../../core/tmdb/tmdbService.js";
 import { TmdbMetadataService } from "../../../core/tmdb/tmdbMetadataService.js";
 import { LayoutPreferences } from "../../../data/local/layoutPreferences.js";
 import { imdbEpisodeRatingsRepository } from "../../../data/repository/imdbEpisodeRatingsRepository.js";
-import {
-  normalizeEpisodeImdbRating,
-  parseEpisodeRuntimeMinutes
-} from "./episodeCardMetadata.js";
+import { normalizeEpisodeImdbRating, parseEpisodeRuntimeMinutes } from "./episodeCardMetadata.js";
 import { mdbListRepository } from "../../../data/repository/mdbListRepository.js";
 import { TmdbSettingsStore } from "../../../data/local/tmdbSettingsStore.js";
 import { PlayerSettingsStore } from "../../../data/local/playerSettingsStore.js";
@@ -22,7 +19,12 @@ import { TraktSettingsStore } from "../../../data/local/traktSettingsStore.js";
 import { TraktAuthService } from "../../../data/repository/traktAuthService.js";
 import { Environment } from "../../../platform/environment.js";
 import { Platform } from "../../../platform/index.js";
-import { TMDB_API_KEY, TRAKT_API_URL, TRAKT_CLIENT_ID, YOUTUBE_PROXY_URL } from "../../../config.js";
+import {
+  TMDB_API_KEY,
+  TRAKT_API_URL,
+  TRAKT_CLIENT_ID,
+  YOUTUBE_PROXY_URL
+} from "../../../config.js";
 import { I18n } from "../../../i18n/index.js";
 import { NuvioDialog } from "../../components/nuvioDialog.js";
 import { renderLoadingIndicator } from "../../components/loadingIndicator.js";
@@ -272,14 +274,18 @@ function formatResumeRemaining(progress = {}) {
 }
 
 function isSeriesDetailMeta(meta = {}, episodes = null) {
-  const normalizedType = String(meta?.type || "").trim().toLowerCase();
+  const normalizedType = String(meta?.type || "")
+    .trim()
+    .toLowerCase();
   if (normalizedType === "series") {
     return true;
   }
   if (normalizedType !== "tv") {
     return false;
   }
-  const resolvedEpisodes = Array.isArray(episodes) ? episodes : normalizeEpisodes(meta?.videos || []);
+  const resolvedEpisodes = Array.isArray(episodes)
+    ? episodes
+    : normalizeEpisodes(meta?.videos || []);
   return resolvedEpisodes.length > 0;
 }
 
@@ -308,9 +314,16 @@ function resolveMetaImdbId(meta = {}, params = {}) {
     meta?.id,
     params?.itemId
   ];
-  return candidates
-    .map((value) => String(value || "").trim().split(":")[0])
-    .find((value) => /^tt\d+$/i.test(value)) || null;
+  return (
+    candidates
+      .map(
+        (value) =>
+          String(value || "")
+            .trim()
+            .split(":")[0]
+      )
+      .find((value) => /^tt\d+$/i.test(value)) || null
+  );
 }
 
 function resolveMetaTmdbId(meta = {}, params = {}) {
@@ -325,9 +338,17 @@ function resolveMetaTmdbId(meta = {}, params = {}) {
     meta?.id,
     params?.itemId
   ];
-  return candidates
-    .map((value) => String(value || "").trim().replace(/^tmdb:/i, "").split(":")[0])
-    .find((value) => /^\d+$/.test(value)) || null;
+  return (
+    candidates
+      .map(
+        (value) =>
+          String(value || "")
+            .trim()
+            .replace(/^tmdb:/i, "")
+            .split(":")[0]
+      )
+      .find((value) => /^\d+$/.test(value)) || null
+  );
 }
 
 function resolveMetaTraktId(meta = {}, params = {}) {
@@ -342,21 +363,31 @@ function resolveMetaTraktId(meta = {}, params = {}) {
     meta?.id,
     params?.itemId
   ];
-  return candidates
-    .map((value) => String(value || "").trim().replace(/^trakt:/i, "").split(":")[0])
-    .find((value) => /^\d+$/.test(value)) || null;
+  return (
+    candidates
+      .map(
+        (value) =>
+          String(value || "")
+            .trim()
+            .replace(/^trakt:/i, "")
+            .split(":")[0]
+      )
+      .find((value) => /^\d+$/.test(value)) || null
+  );
 }
 
 function resolveMetaOriginalLanguage(meta = {}, params = {}) {
-  return [
-    meta?.originalLanguage,
-    meta?.original_language,
-    params?.contentLanguage,
-    params?.originalLanguage,
-    params?.original_language
-  ]
-    .map((value) => String(value || "").trim())
-    .find(Boolean) || null;
+  return (
+    [
+      meta?.originalLanguage,
+      meta?.original_language,
+      params?.contentLanguage,
+      params?.originalLanguage,
+      params?.original_language
+    ]
+      .map((value) => String(value || "").trim())
+      .find(Boolean) || null
+  );
 }
 
 function metaWithRouteExternalIds(meta = {}, params = {}) {
@@ -404,7 +435,11 @@ function extractCast(meta = {}) {
     }
     return raw;
   };
-  const normalizeCastValue = (value) => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+  const normalizeCastValue = (value) =>
+    String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
   const selectBetterCastEntry = (current, candidate) => {
     if (!candidate) {
       return current;
@@ -436,14 +471,20 @@ function extractCast(meta = {}) {
         const exactKey = `${normalizedName}|${normalizedCharacter}`;
         exactMatches.set(exactKey, selectBetterCastEntry(exactMatches.get(exactKey), entry));
       }
-      nameMatches.set(normalizedName, selectBetterCastEntry(nameMatches.get(normalizedName), entry));
+      nameMatches.set(
+        normalizedName,
+        selectBetterCastEntry(nameMatches.get(normalizedName), entry)
+      );
     });
 
     return primary.map((entry) => {
       const normalizedName = normalizeCastValue(entry?.name);
       const normalizedCharacter = normalizeCastValue(entry?.character);
-      const exactKey = normalizedName && normalizedCharacter ? `${normalizedName}|${normalizedCharacter}` : "";
-      const match = (exactKey ? exactMatches.get(exactKey) : null) || (normalizedName ? nameMatches.get(normalizedName) : null);
+      const exactKey =
+        normalizedName && normalizedCharacter ? `${normalizedName}|${normalizedCharacter}` : "";
+      const match =
+        (exactKey ? exactMatches.get(exactKey) : null) ||
+        (normalizedName ? nameMatches.get(normalizedName) : null);
       return {
         ...entry,
         character: entry?.character || match?.character || "",
@@ -452,22 +493,21 @@ function extractCast(meta = {}) {
       };
     });
   };
-  const mapCastEntries = (items = [], mapper) => (Array.isArray(items) ? items : [])
-    .map(mapper)
-    .filter((entry) => Boolean(entry?.name));
+  const mapCastEntries = (items = [], mapper) =>
+    (Array.isArray(items) ? items : []).map(mapper).filter((entry) => Boolean(entry?.name));
 
   const members = Array.isArray(meta.castMembers) ? meta.castMembers : [];
   const memberEntries = mapCastEntries(members, (entry) => ({
     name: entry?.name || "",
     character: entry?.character || entry?.role || "",
     photo: toPhoto(
-      entry?.photo
-      || entry?.profilePath
-      || entry?.profile_path
-      || entry?.avatar
-      || entry?.image
-      || entry?.poster
-      || ""
+      entry?.photo ||
+        entry?.profilePath ||
+        entry?.profile_path ||
+        entry?.avatar ||
+        entry?.image ||
+        entry?.poster ||
+        ""
     ),
     tmdbId: entry?.tmdbId || entry?.id || null
   }));
@@ -481,13 +521,13 @@ function extractCast(meta = {}) {
       name: entry?.name || "",
       character: entry?.character || "",
       photo: toPhoto(
-        entry?.photo
-        || entry?.profilePath
-        || entry?.profile_path
-        || entry?.avatar
-        || entry?.image
-        || entry?.poster
-        || ""
+        entry?.photo ||
+          entry?.profilePath ||
+          entry?.profile_path ||
+          entry?.avatar ||
+          entry?.image ||
+          entry?.poster ||
+          ""
       ),
       tmdbId: entry?.tmdbId || entry?.id || null
     };
@@ -498,13 +538,13 @@ function extractCast(meta = {}) {
     name: entry?.name || entry?.character || "",
     character: entry?.character || "",
     photo: toPhoto(
-      entry?.profile_path
-      || entry?.photo
-      || entry?.profilePath
-      || entry?.avatar_path
-      || entry?.avatar
-      || entry?.image
-      || ""
+      entry?.profile_path ||
+        entry?.photo ||
+        entry?.profilePath ||
+        entry?.avatar_path ||
+        entry?.avatar ||
+        entry?.image ||
+        ""
     ),
     tmdbId: entry?.id || null
   }));
@@ -628,7 +668,9 @@ function formatRatingValue(value, { digits = 1, stripTrailingZero = false } = {}
 }
 
 function formatMdbListRating(provider, rating) {
-  const normalizedProvider = String(provider || "").trim().toLowerCase();
+  const normalizedProvider = String(provider || "")
+    .trim()
+    .toLowerCase();
   if (["imdb", "tmdb", "letterboxd"].includes(normalizedProvider)) {
     return formatRatingValue(rating, { digits: 1 });
   }
@@ -1057,10 +1099,7 @@ function buildInlineYoutubePlayerUrl(
       proxyUrl.searchParams.set("playsinline", "1");
       proxyUrl.searchParams.set("rel", "0");
       proxyUrl.searchParams.set("cc_load_policy", "0");
-      proxyUrl.searchParams.set(
-        "state_poll_ms",
-        String(Math.max(0, Number(statePollMs || 0)))
-      );
+      proxyUrl.searchParams.set("state_poll_ms", String(Math.max(0, Number(statePollMs || 0))));
       proxyUrl.searchParams.set("_cb", `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
       return proxyUrl.toString();
     } catch (_) {
@@ -1409,10 +1448,7 @@ export const MetaDetailsScreen = {
         const frameVideoId = String(data.videoId || "").trim();
         const activeId = String(this.trailerSource?.ytId || "").trim();
         const frameTime = Number(data.currentTime || 0);
-        if (
-          frameTime > 0 &&
-          (!frameVideoId || !activeId || frameVideoId === activeId)
-        ) {
+        if (frameTime > 0 && (!frameVideoId || !activeId || frameVideoId === activeId)) {
           this.markTrailerVisualReady();
         }
         return;
@@ -2452,7 +2488,9 @@ export const MetaDetailsScreen = {
                 ...video,
                 title: episode.title || video.title,
                 overview: episode.overview || video.overview,
-                released: settings.useReleaseDates ? episode.airDate || video.released : video.released,
+                released: settings.useReleaseDates
+                  ? episode.airDate || video.released
+                  : video.released,
                 thumbnail: episode.thumbnail || video.thumbnail,
                 runtime: episode.runtime || video.runtime
               };
@@ -2470,7 +2508,9 @@ export const MetaDetailsScreen = {
         // TMDB enrichment deliberately returns no logo when only unrelated
         // languages are available; show the localized text title in that case.
         logo: settings.useArtwork ? enrichment.logo : meta.logo,
-        genres: settings.useBasicInfo ? mergeGenreLists(meta.genres, enrichment.genres) : meta.genres,
+        genres: settings.useBasicInfo
+          ? mergeGenreLists(meta.genres, enrichment.genres)
+          : meta.genres,
         releaseInfo: settings.useReleaseDates
           ? meta.releaseInfo || enrichment.releaseInfo
           : meta.releaseInfo,
@@ -2481,29 +2521,31 @@ export const MetaDetailsScreen = {
         country: settings.useDetails ? enrichment.country || meta.country : meta.country,
         language: settings.useDetails ? enrichment.language || meta.language : meta.language,
         originalLanguage:
-          enrichment.originalLanguage ||
-          meta.originalLanguage ||
-          meta.original_language ||
-          null,
+          enrichment.originalLanguage || meta.originalLanguage || meta.original_language || null,
         imdbId: enrichment.imdbId || meta.imdbId || meta.imdb_id || null,
         tmdbRating:
           settings.useBasicInfo && typeof enrichment.rating === "number"
             ? Number(enrichment.rating.toFixed(1))
             : meta.tmdbRating || null,
-        credits: settings.useCredits ? enrichment.credits || meta.credits || null : meta.credits || null,
-        companies: settings.useProductions && Array.isArray(enrichment.companies)
-          ? enrichment.companies
-          : meta.companies || [],
-        productionCompanies: settings.useProductions && Array.isArray(enrichment.productionCompanies)
-          ? enrichment.productionCompanies
-          : Array.isArray(meta.productionCompanies)
-            ? meta.productionCompanies
-            : [],
-        networks: settings.useNetworks && Array.isArray(enrichment.networks)
-          ? enrichment.networks
-          : Array.isArray(meta.networks)
-            ? meta.networks
-            : [],
+        credits: settings.useCredits
+          ? enrichment.credits || meta.credits || null
+          : meta.credits || null,
+        companies:
+          settings.useProductions && Array.isArray(enrichment.companies)
+            ? enrichment.companies
+            : meta.companies || [],
+        productionCompanies:
+          settings.useProductions && Array.isArray(enrichment.productionCompanies)
+            ? enrichment.productionCompanies
+            : Array.isArray(meta.productionCompanies)
+              ? meta.productionCompanies
+              : [],
+        networks:
+          settings.useNetworks && Array.isArray(enrichment.networks)
+            ? enrichment.networks
+            : Array.isArray(meta.networks)
+              ? meta.networks
+              : [],
         trailers:
           Array.isArray(meta.trailers) && meta.trailers.length
             ? meta.trailers
@@ -2528,9 +2570,10 @@ export const MetaDetailsScreen = {
           meta?.belongsToCollection?.name ||
           meta?.belongs_to_collection?.name ||
           "",
-        belongsToCollection: settings.useCollections && enrichment.collectionId
-          ? { id: enrichment.collectionId, name: enrichment.collectionName || "" }
-          : meta.belongsToCollection || meta.belongs_to_collection || null,
+        belongsToCollection:
+          settings.useCollections && enrichment.collectionId
+            ? { id: enrichment.collectionId, name: enrichment.collectionName || "" }
+            : meta.belongsToCollection || meta.belongs_to_collection || null,
         videos
       };
     } catch (error) {
@@ -2596,11 +2639,13 @@ export const MetaDetailsScreen = {
       }
       const imdbId = resolveMetaImdbId(meta, this.params);
       const knownTmdbId = resolveMetaTmdbId(meta, this.params);
-      const tmdbId = knownTmdbId || await TmdbService.ensureTmdbId(meta.id, "series", {
-        // Episode IMDb ratings are independent from optional TMDB metadata
-        // enrichment, matching Android TV's detail-screen behavior.
-        requireEnabled: false
-      });
+      const tmdbId =
+        knownTmdbId ||
+        (await TmdbService.ensureTmdbId(meta.id, "series", {
+          // Episode IMDb ratings are independent from optional TMDB metadata
+          // enrichment, matching Android TV's detail-screen behavior.
+          requireEnabled: false
+        }));
       if (!imdbId && !tmdbId) {
         return {};
       }
@@ -3734,7 +3779,9 @@ export const MetaDetailsScreen = {
             entries.forEach((entry) => {
               if (entry.isIntersecting) {
                 this.applyEpisodeThumb(entry.target);
-                try { this.episodeThumbObserver.unobserve(entry.target); } catch (_) {}
+                try {
+                  this.episodeThumbObserver.unobserve(entry.target);
+                } catch (_) {}
               }
             });
           },
@@ -3918,7 +3965,11 @@ export const MetaDetailsScreen = {
     const thumb = card.querySelector(".series-episode-thumb");
     const image = card.querySelector(".series-episode-image");
     const copy = card.querySelector(".series-episode-copy");
-    if (!(thumb instanceof HTMLElement) || !(image instanceof HTMLElement) || !(copy instanceof HTMLElement)) {
+    if (
+      !(thumb instanceof HTMLElement) ||
+      !(image instanceof HTMLElement) ||
+      !(copy instanceof HTMLElement)
+    ) {
       return;
     }
 
@@ -4933,15 +4984,12 @@ export const MetaDetailsScreen = {
     }
     const progress = this.getEpisodeMenuProgress(episode);
     this.episodeHoldMenu = null;
-    this.navigateToStreamScreenForEpisode(
-      episode,
-      {
-        ...this.getResumeParamsForProgress(progress, {
-          startOver: Boolean(options.startOver)
-        }),
-        ...(options.manualSelection ? { manualSelection: true } : {})
-      }
-    );
+    this.navigateToStreamScreenForEpisode(episode, {
+      ...this.getResumeParamsForProgress(progress, {
+        startOver: Boolean(options.startOver)
+      }),
+      ...(options.manualSelection ? { manualSelection: true } : {})
+    });
     return true;
   },
 
@@ -5642,7 +5690,8 @@ export const MetaDetailsScreen = {
         ? active
         : null;
     const current = this.container.querySelector(".focusable.focused");
-    const target = activeTarget || current || (active && this.container.contains(active) ? active : null);
+    const target =
+      activeTarget || current || (active && this.container.contains(active) ? active : null);
     if (!(target instanceof HTMLElement) || !target.closest(".series-detail-content")) {
       return null;
     }
@@ -5750,15 +5799,15 @@ export const MetaDetailsScreen = {
     const focused = this.container?.querySelector(".focusable.focused") || null;
     return Boolean(
       this.trailerHasAutoplayed ||
-        !content ||
-        Number(content.scrollTop || 0) > 160 ||
-        !focused?.matches?.('.series-detail-actions [data-action="playDefault"]') ||
-        this.seasonHoldMenu ||
-        this.episodeHoldMenu ||
-        this.heroPlayMenu ||
-        this.libraryListMenu ||
-        this.detailHoldDialog ||
-        this.posterOptionsController?.dialog
+      !content ||
+      Number(content.scrollTop || 0) > 160 ||
+      !focused?.matches?.('.series-detail-actions [data-action="playDefault"]') ||
+      this.seasonHoldMenu ||
+      this.episodeHoldMenu ||
+      this.heroPlayMenu ||
+      this.libraryListMenu ||
+      this.detailHoldDialog ||
+      this.posterOptionsController?.dialog
     );
   },
 
@@ -6000,8 +6049,7 @@ export const MetaDetailsScreen = {
       if (
         this.isTrailerPlaying &&
         this.trailerSource?.kind === "youtube" &&
-        (!expectedId ||
-          String(this.trailerSource?.ytId || "").trim() === expectedId)
+        (!expectedId || String(this.trailerSource?.ytId || "").trim() === expectedId)
       ) {
         this.markTrailerVisualReady();
       }
@@ -6074,11 +6122,7 @@ export const MetaDetailsScreen = {
 
   restartTrailerControlsTimer() {
     this.stopTrailerControlsTimer();
-    if (
-      !this.isTrailerPlaying ||
-      !this.trailerSource ||
-      this.trailerPlaybackMode !== "manual"
-    ) {
+    if (!this.isTrailerPlaying || !this.trailerSource || this.trailerPlaybackMode !== "manual") {
       this.setTrailerControlsVisible(false);
       return;
     }
@@ -6319,11 +6363,7 @@ export const MetaDetailsScreen = {
   },
 
   toggleActiveTrailerPlayback() {
-    if (
-      !this.isTrailerPlaying ||
-      !this.trailerSource ||
-      this.trailerPlaybackMode !== "manual"
-    ) {
+    if (!this.isTrailerPlaying || !this.trailerSource || this.trailerPlaybackMode !== "manual") {
       return;
     }
     this.restartTrailerControlsTimer();
@@ -6408,11 +6448,7 @@ export const MetaDetailsScreen = {
   },
 
   setActiveTrailerPausedState(paused) {
-    if (
-      !this.isTrailerPlaying ||
-      !this.trailerSource ||
-      this.trailerPlaybackMode !== "manual"
-    ) {
+    if (!this.isTrailerPlaying || !this.trailerSource || this.trailerPlaybackMode !== "manual") {
       return;
     }
     const shouldPause = Boolean(paused);
@@ -6457,7 +6493,9 @@ export const MetaDetailsScreen = {
     );
     this.trailerDomGeneration = Number(this.trailerDomGeneration || 0) + 1;
     const trailerHint = escapeHtml(t("hero_press_back_trailer", {}, "Press back to exit trailer"));
-    const controlsMarkup = this.trailerPlaybackMode === "manual" ? `
+    const controlsMarkup =
+      this.trailerPlaybackMode === "manual"
+        ? `
       <div class="detail-trailer-controls-overlay" tabindex="-1">
         <div class="detail-trailer-controls-gradient detail-trailer-controls-gradient-top"></div>
         <div class="detail-trailer-controls-gradient detail-trailer-controls-gradient-bottom"></div>
@@ -6479,7 +6517,8 @@ export const MetaDetailsScreen = {
           </div>
         </div>
       </div>
-    ` : "";
+    `
+        : "";
     if (this.trailerSource.kind === "youtube") {
       const youtubeFrameUrl =
         buildInlineYoutubePlayerUrl(this.trailerSource.ytId, {
@@ -6573,8 +6612,7 @@ export const MetaDetailsScreen = {
     this.trailerSubtitlesEnabled = false;
     this.trailerPlaybackMode = initiatedByUser ? "manual" : "autoplay";
     this.trailerFocusRestore =
-      initiatedByUser &&
-      requestedFocusRestore?.selector?.includes(".series-detail-actions")
+      initiatedByUser && requestedFocusRestore?.selector?.includes(".series-detail-actions")
         ? { selector: '.series-detail-actions [data-action="playDefault"]' }
         : requestedFocusRestore;
     this.trailerVisualReady = false;
@@ -6723,23 +6761,18 @@ export const MetaDetailsScreen = {
       return;
     }
     const progress = this.getEpisodeMenuProgress(episode) || this.getActiveResumeProgress();
-    this.navigateToStreamScreenForEpisode(
-      episode,
-      {
-        ...this.getResumeParamsForProgress(progress, options),
-        ...(options.manualSelection ? { manualSelection: true } : {})
-      }
-    );
+    this.navigateToStreamScreenForEpisode(episode, {
+      ...this.getResumeParamsForProgress(progress, options),
+      ...(options.manualSelection ? { manualSelection: true } : {})
+    });
   },
 
   async openMovieStreamChooser(options = {}) {
     this.stopTrailerPlaybackForNavigation();
-    this.navigateToStreamScreenForMovie(
-      {
-        ...this.getResumeParamsForProgress(this.getActiveResumeProgress(), options),
-        ...(options.manualSelection ? { manualSelection: true } : {})
-      }
-    );
+    this.navigateToStreamScreenForMovie({
+      ...this.getResumeParamsForProgress(this.getActiveResumeProgress(), options),
+      ...(options.manualSelection ? { manualSelection: true } : {})
+    });
   },
 
   getActivePendingSelection() {
@@ -7060,42 +7093,47 @@ export const MetaDetailsScreen = {
           Number(this.params?.resumeEpisode || 0) === Number(episode.episode || 0))
     );
     this.stopTrailerPlaybackForNavigation();
-    Router.navigate("stream", {
-      itemId: this.params?.itemId || null,
-      itemType: "series",
-      imdbId,
-      tmdbId,
-      traktId,
-      contentLanguage,
-      originalItemId: this.params?.originalItemId || null,
-      returnToDetail: true,
-      fromDetailRoute: true,
-      itemTitle: this.meta?.name || this.params?.fallbackTitle || this.params?.itemId || "Untitled",
-      year: releaseYear,
-      backdrop: streamBackdrop,
-      poster: this.meta?.poster || null,
-      logo: this.meta?.logo || null,
-      runtime: episode.runtimeMinutes || null,
-      parentalWarnings: this.meta?.parentalWarnings || null,
-      parentalGuide: this.meta?.parentalGuide || null,
-      videoId: episode.id,
-      preferredStreamId: StreamPreferencesStore.get(this.params?.itemId, episode.id) || null,
-      season: episode.season,
-      episode: episode.episode,
-      episodeTitle: episode.title || "",
-      episodes: this.episodes || [],
-      nextEpisodeVideoId: nextEpisode?.id || null,
-      nextEpisodeLabel: nextEpisode ? `S${nextEpisode.season}E${nextEpisode.episode}` : null,
-      nextEpisodeSeason: nextEpisode?.season ?? null,
-      nextEpisodeEpisode: nextEpisode?.episode ?? null,
-      nextEpisodeTitle: nextEpisode?.title || "",
-      nextEpisodeReleased: nextEpisode?.released || "",
-      continueWatchingBackHome: isContinueWatchingTarget,
-      resumeStreamIdentity: isContinueWatchingTarget
-        ? this.params?.resumeStreamIdentity || null
-        : null,
-      ...extraParams
-    }, this.getStreamNavigationOptions());
+    Router.navigate(
+      "stream",
+      {
+        itemId: this.params?.itemId || null,
+        itemType: "series",
+        imdbId,
+        tmdbId,
+        traktId,
+        contentLanguage,
+        originalItemId: this.params?.originalItemId || null,
+        returnToDetail: true,
+        fromDetailRoute: true,
+        itemTitle:
+          this.meta?.name || this.params?.fallbackTitle || this.params?.itemId || "Untitled",
+        year: releaseYear,
+        backdrop: streamBackdrop,
+        poster: this.meta?.poster || null,
+        logo: this.meta?.logo || null,
+        runtime: episode.runtimeMinutes || null,
+        parentalWarnings: this.meta?.parentalWarnings || null,
+        parentalGuide: this.meta?.parentalGuide || null,
+        videoId: episode.id,
+        preferredStreamId: StreamPreferencesStore.get(this.params?.itemId, episode.id) || null,
+        season: episode.season,
+        episode: episode.episode,
+        episodeTitle: episode.title || "",
+        episodes: this.episodes || [],
+        nextEpisodeVideoId: nextEpisode?.id || null,
+        nextEpisodeLabel: nextEpisode ? `S${nextEpisode.season}E${nextEpisode.episode}` : null,
+        nextEpisodeSeason: nextEpisode?.season ?? null,
+        nextEpisodeEpisode: nextEpisode?.episode ?? null,
+        nextEpisodeTitle: nextEpisode?.title || "",
+        nextEpisodeReleased: nextEpisode?.released || "",
+        continueWatchingBackHome: isContinueWatchingTarget,
+        resumeStreamIdentity: isContinueWatchingTarget
+          ? this.params?.resumeStreamIdentity || null
+          : null,
+        ...extraParams
+      },
+      this.getStreamNavigationOptions()
+    );
   },
 
   navigateToStreamScreenForMovie(extraParams = {}) {
@@ -7108,31 +7146,36 @@ export const MetaDetailsScreen = {
     const traktId = resolveMetaTraktId(this.meta, this.params);
     const contentLanguage = resolveMetaOriginalLanguage(this.meta, this.params);
     this.stopTrailerPlaybackForNavigation();
-    Router.navigate("stream", {
-      itemId: this.params?.itemId || null,
-      itemType,
-      imdbId,
-      tmdbId,
-      traktId,
-      contentLanguage,
-      originalItemId: this.params?.originalItemId || null,
-      returnToDetail: true,
-      fromDetailRoute: true,
-      itemTitle: this.meta?.name || this.params?.fallbackTitle || this.params?.itemId || "Untitled",
-      itemSubtitle: "",
-      genres: Array.isArray(this.meta?.genres) ? this.meta.genres.slice(0, 3).join(" • ") : "",
-      year: releaseYear,
-      backdrop: streamBackdrop,
-      poster: this.meta?.poster || null,
-      logo: this.meta?.logo || null,
-      parentalWarnings: this.meta?.parentalWarnings || null,
-      parentalGuide: this.meta?.parentalGuide || null,
-      videoId: this.params?.itemId || null,
-      preferredStreamId:
-        StreamPreferencesStore.get(this.params?.itemId, this.params?.itemId) || null,
-      episodes: [],
-      ...extraParams
-    }, this.getStreamNavigationOptions());
+    Router.navigate(
+      "stream",
+      {
+        itemId: this.params?.itemId || null,
+        itemType,
+        imdbId,
+        tmdbId,
+        traktId,
+        contentLanguage,
+        originalItemId: this.params?.originalItemId || null,
+        returnToDetail: true,
+        fromDetailRoute: true,
+        itemTitle:
+          this.meta?.name || this.params?.fallbackTitle || this.params?.itemId || "Untitled",
+        itemSubtitle: "",
+        genres: Array.isArray(this.meta?.genres) ? this.meta.genres.slice(0, 3).join(" • ") : "",
+        year: releaseYear,
+        backdrop: streamBackdrop,
+        poster: this.meta?.poster || null,
+        logo: this.meta?.logo || null,
+        parentalWarnings: this.meta?.parentalWarnings || null,
+        parentalGuide: this.meta?.parentalGuide || null,
+        videoId: this.params?.itemId || null,
+        preferredStreamId:
+          StreamPreferencesStore.get(this.params?.itemId, this.params?.itemId) || null,
+        episodes: [],
+        ...extraParams
+      },
+      this.getStreamNavigationOptions()
+    );
   },
 
   playMovieFromSelectedStream(streamId) {
@@ -7407,9 +7450,7 @@ export const MetaDetailsScreen = {
   getActivePreviewRailKey() {
     const kind = isSeriesDetailMeta(this.meta, this.episodes) ? "series" : "movie";
     const activeTab =
-      kind === "series"
-        ? String(this.seriesInsightTab || "")
-        : String(this.movieInsightTab || "");
+      kind === "series" ? String(this.seriesInsightTab || "") : String(this.movieInsightTab || "");
     return `${activeTab === "collection" ? "collection" : "morelike"}:${kind}`;
   },
 
@@ -8294,11 +8335,9 @@ export const MetaDetailsScreen = {
         return this.focusInList(actions, Math.min(tabIndex, actions.length - 1)) || true;
       if (direction === "down") {
         if (cast.length) return this.focusInList(cast, 0) || true;
-        if (moreLikeCards.length)
-          return this.focusInList(moreLikeCards, 0) || true;
+        if (moreLikeCards.length) return this.focusInList(moreLikeCards, 0) || true;
         if (focusCommentsEntry(0)) return true;
-        if (companyCards[0]?.length)
-          return this.focusInList(companyCards[0], 0) || true;
+        if (companyCards[0]?.length) return this.focusInList(companyCards[0], 0) || true;
       }
       return true;
     }
@@ -8893,8 +8932,7 @@ export const MetaDetailsScreen = {
     }
   },
 
-  onPointerFocus() {
-  },
+  onPointerFocus() {},
 
   onPointerActivate(target) {
     const actionTarget = target?.closest?.("[data-action]");
@@ -8974,7 +9012,9 @@ export const MetaDetailsScreen = {
     this.stopEpisodeHoldRepeat();
     this.episodeThumbnailPrefetchCache = new Set();
     if (this.episodeThumbObserver) {
-      try { this.episodeThumbObserver.disconnect(); } catch (_) {}
+      try {
+        this.episodeThumbObserver.disconnect();
+      } catch (_) {}
       this.episodeThumbObserver = null;
     }
     this.selectedSeasonEpisodeState = null;

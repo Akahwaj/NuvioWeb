@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  normalizeEpisodeImdbRating,
-  parseEpisodeRuntimeMinutes
-} from "./episodeCardMetadata.js";
+import { normalizeEpisodeImdbRating, parseEpisodeRuntimeMinutes } from "./episodeCardMetadata.js";
 
 test("keeps numeric episode runtimes", () => {
   assert.equal(parseEpisodeRuntimeMinutes(52), 52);

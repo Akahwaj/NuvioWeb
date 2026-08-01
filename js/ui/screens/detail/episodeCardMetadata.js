@@ -14,7 +14,7 @@ export function parseEpisodeRuntimeMinutes(value) {
   if (hourMatch || minuteMatch) {
     const hours = hourMatch ? Number(hourMatch[1]) : 0;
     const minutes = minuteMatch ? Number(minuteMatch[1]) : 0;
-    return Math.round((hours * 60) + minutes);
+    return Math.round(hours * 60 + minutes);
   }
 
   const digits = normalized.replace(/\D/g, "");

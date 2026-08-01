@@ -39,8 +39,7 @@ let hasSelectedProfileThisSession = false;
 let appShellRendered = false;
 let updateCheckStarted = false;
 
-const APP_VERSION =
-  typeof __NUVIO_APP_VERSION__ !== "undefined" ? __NUVIO_APP_VERSION__ : "0.0.0";
+const APP_VERSION = typeof __NUVIO_APP_VERSION__ !== "undefined" ? __NUVIO_APP_VERSION__ : "0.0.0";
 
 function markBootStage(stage) {
   const guard = globalThis.NuvioBootGuard;
@@ -137,8 +136,7 @@ function applyPerformanceMode() {
   const rootClasses = document.documentElement.classList;
   const modernWebOs = Platform.isWebOS() && getChromiumMajorVersion() >= 120;
   const modernSidebarBlurCapable =
-    !rootClasses.contains("no-backdrop-filter") &&
-    ((!constrained && !legacyTizen) || modernWebOs);
+    !rootClasses.contains("no-backdrop-filter") && ((!constrained && !legacyTizen) || modernWebOs);
   document.documentElement.classList.toggle("performance-constrained", constrained);
   document.body.classList.toggle("performance-constrained", constrained);
   document.documentElement.classList.toggle(
@@ -152,12 +150,7 @@ function applyPerformanceMode() {
   document.body.classList.toggle("legacy-webos38", legacyWebOs38);
   document.documentElement.classList.toggle("legacy-tizen", legacyTizen);
   document.body.classList.toggle("legacy-tizen", legacyTizen);
-  [
-    "no-flex-gap",
-    "no-aspect-ratio",
-    "no-css-math",
-    "no-backdrop-filter"
-  ].forEach((className) => {
+  ["no-flex-gap", "no-aspect-ratio", "no-css-math", "no-backdrop-filter"].forEach((className) => {
     document.body.classList.toggle(className, rootClasses.contains(className));
   });
 }
@@ -218,9 +211,10 @@ async function enterWithLastProfile({ restoreWebOsRoute = false } = {}) {
       console.warn("Stream badge image prerender failed", error);
     });
   }
-  const resumeRoute = restoreWebOsRoute && typeof Router.consumeWebOsResumeRoute === "function"
-    ? Router.consumeWebOsResumeRoute()
-    : null;
+  const resumeRoute =
+    restoreWebOsRoute && typeof Router.consumeWebOsResumeRoute === "function"
+      ? Router.consumeWebOsResumeRoute()
+      : null;
   if (resumeRoute?.route) {
     await Router.navigate(resumeRoute.route, resumeRoute.params || {}, {
       replaceHistory: true,
@@ -424,7 +418,11 @@ async function bootstrapApp() {
             console.warn("Failed to enter with last profile", error);
             ProfileManager.clearActiveProfile();
             if (Router.getCurrent() !== "profileSelection") {
-              Router.navigate("profileSelection", {}, { replaceHistory: true, skipStackPush: true });
+              Router.navigate(
+                "profileSelection",
+                {},
+                { replaceHistory: true, skipStackPush: true }
+              );
             }
           });
           return;

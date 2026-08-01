@@ -1,7 +1,4 @@
-import {
-  IMDB_RATINGS_API_BASE_URL,
-  IMDB_TAPFRAME_API_BASE_URL
-} from "../../config.js";
+import { IMDB_RATINGS_API_BASE_URL, IMDB_TAPFRAME_API_BASE_URL } from "../../config.js";
 
 const CACHE_TTL_MS = 30 * 60 * 1000;
 const CACHE = new Map();
@@ -66,7 +63,9 @@ export function mapRatingsPayload(payload = []) {
 }
 
 function normalizeImdbId(value) {
-  const normalized = String(value || "").trim().split(":")[0];
+  const normalized = String(value || "")
+    .trim()
+    .split(":")[0];
   return /^tt\d+$/i.test(normalized) ? normalized : "";
 }
 
