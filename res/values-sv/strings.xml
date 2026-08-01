@@ -903,6 +903,9 @@
     <string name="layout_selection_subtitle">Välj din hemskärmslayout</string>
     <string name="layout_selection_continue">Fortsätt</string>
     <string name="update_title">Appuppdatering</string>
+    <string name="update_installer_required">Använd Nuvio WebTV Installer för att uppdatera appen på TV:n.</string>
+    <string name="update_release_notes">Nyheter</string>
+    <string name="update_release_notes_unavailable">Ingen versionsbeskrivning är tillgänglig.</string>
     <string name="update_downloading">Laddar ner uppdatering</string>
     <string name="update_download">Ladda ner</string>
     <string name="update_downloading_ellipsis">Laddar ner…</string>
@@ -1432,4 +1435,12 @@
     <string name="unsupported_device_required_platform">Plattform som krävs</string>
     <string name="unsupported_device_close">Stäng</string>
     <string name="unsupported_device_unavailable">Inte tillgänglig</string>
+    <string name="still_watching_title">Tittar du fortfarande?</string>
+    <string name="still_watching_continue">Spela</string>
+    <string name="still_watching_exit">Avsluta</string>
+    <string name="still_watching_countdown">Stoppar om %1$d</string>
+    <string name="still_watching_setting_title">Tittar du fortfarande?</string>
+    <string name="still_watching_setting_sub">Fråga efter flera automatiskt uppspelade avsnitt i följd.</string>
+    <string name="still_watching_threshold_title">Avsnittsgräns</string>
+    <string name="still_watching_threshold_sub">Antal automatiskt uppspelade avsnitt innan frågan visas.</string>
 </resources>

@@ -743,6 +743,9 @@
     <string name="layout_selection_subtitle">Chọn bố cục màn hình chính</string>
     <string name="layout_selection_continue">Tiếp tục</string>
     <string name="update_title">Cập nhật ứng dụng</string>
+    <string name="update_installer_required">Dùng Nuvio WebTV Installer để cập nhật ứng dụng trên TV.</string>
+    <string name="update_release_notes">Có gì mới</string>
+    <string name="update_release_notes_unavailable">Không có mô tả bản phát hành.</string>
     <string name="update_downloading">Đang tải bản cập nhật</string>
     <string name="update_unknown_sources">Cho phép cài đặt từ nguồn không xác định để tiếp tục.</string>
     <string name="account_title">Tài khoản</string>
@@ -950,4 +953,12 @@
     <string name="unsupported_device_required_platform">Nền tảng yêu cầu</string>
     <string name="unsupported_device_close">Đóng</string>
     <string name="unsupported_device_unavailable">Không có</string>
+    <string name="still_watching_title">Bạn vẫn đang xem chứ?</string>
+    <string name="still_watching_continue">Phát</string>
+    <string name="still_watching_exit">Thoát</string>
+    <string name="still_watching_countdown">Dừng sau %1$d</string>
+    <string name="still_watching_setting_title">Bạn vẫn đang xem chứ?</string>
+    <string name="still_watching_setting_sub">Hiển thị lời nhắc sau nhiều tập liên tiếp được tự động phát.</string>
+    <string name="still_watching_threshold_title">Ngưỡng số tập</string>
+    <string name="still_watching_threshold_sub">Số tập tự động phát trước khi hiển thị lời nhắc.</string>
 </resources>

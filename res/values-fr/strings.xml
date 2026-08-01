@@ -1329,6 +1329,9 @@
     <string name="layout_selection_subtitle">Choisis la disposition de ton écran d’accueil</string>
     <string name="layout_selection_continue">Continuer</string>
     <string name="update_title">Mise à jour de l’application</string>
+    <string name="update_installer_required">Utilisez Nuvio WebTV Installer pour mettre à jour l’application sur votre téléviseur.</string>
+    <string name="update_release_notes">Nouveautés</string>
+    <string name="update_release_notes_unavailable">Aucune description de la version n’est disponible.</string>
     <string name="update_downloading">Téléchargement de la mise à jour</string>
     <string name="update_download">Télécharger</string>
     <string name="update_downloading_ellipsis">Téléchargement…</string>

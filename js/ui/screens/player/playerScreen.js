@@ -11,6 +11,10 @@ import {
   canReleasePlayingNativeStartupAudioGate,
   selectStartupAudioFallbackOption
 } from "../../../core/player/startupAudioGatePolicy.js";
+import {
+  buildClockFormatOptions,
+  resolveSystemHour12
+} from "../../../core/player/clockFormat.js";
 import { resolveSubtitleStyleControlAvailability } from "../../../core/player/subtitlePresentationCapabilities.js";
 import {
   ensureWebOsImageProxyReady,
@@ -1195,14 +1199,18 @@ function formatTime(secondsValue) {
 
 function formatClock(date = new Date()) {
   const locale = typeof I18n.getLocale === "function" ? I18n.getLocale() : undefined;
-  const localeKey = String(locale || "__default__");
+  const hour12 = resolveSystemHour12({
+    tizenApi: typeof tizen !== "undefined" ? tizen : null,
+    intlApi: typeof Intl !== "undefined" ? Intl : null
+  });
+  const localeKey = `${String(locale || "__default__")}:${String(hour12)}`;
+  const options = buildClockFormatOptions(hour12);
   if (!CLOCK_FORMATTER_CACHE.has(localeKey)) {
     try {
-      CLOCK_FORMATTER_CACHE.set(localeKey, new Intl.DateTimeFormat(locale || undefined, {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false
-      }));
+      CLOCK_FORMATTER_CACHE.set(
+        localeKey,
+        new Intl.DateTimeFormat(locale || undefined, options)
+      );
     } catch (_) {
       CLOCK_FORMATTER_CACHE.set(localeKey, null);
     }
@@ -1212,17 +1220,9 @@ function formatClock(date = new Date()) {
     if (formatter?.format) {
       return formatter.format(date);
     }
-    return date.toLocaleTimeString(locale || undefined, {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false
-    });
+    return date.toLocaleTimeString(locale || undefined, options);
   } catch (_) {
-    return date.toLocaleTimeString(undefined, {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false
-    });
+    return date.toLocaleTimeString(undefined, options);
   }
 }
 
@@ -5815,18 +5815,19 @@ export const PlayerScreen = {
     if (this.stillWatchingPromptVisible) {
       const nextEpisode = this.resolveNextEpisodeInfo();
       const titleLine = [nextEpisode?.episodeLabel, nextEpisode?.episodeTitle].filter(Boolean).join(" • ");
+      const episode = this.episodes.find((entry) => String(entry?.id || "") === String(nextEpisode?.videoId || ""));
+      const thumbnail = episodeThumbnailUrl(episode);
       overlay.innerHTML = `
-        <div class="player-pause-overlay-top">
-          <div class="player-pause-overlay-clock">${escapeHtml(clockText)}</div>
-        </div>
-        <div class="player-pause-overlay-shade"></div>
         <div class="player-pause-overlay-content player-still-watching-content">
-          <div class="player-pause-kicker">${escapeHtml(t("still_watching_title", {}, "Still watching"))}</div>
-          <div class="player-pause-title">${escapeHtml(titleLine || t("next_episode_label", {}, "Next episode"))}</div>
-          <div class="player-pause-description">${escapeHtml(t("still_watching_countdown", [this.stillWatchingPromptCountdownSec], "Continuing in %1$s"))}</div>
+          ${thumbnail ? `<img class="player-still-watching-thumb" src="${escapeAttribute(thumbnail)}" alt="" aria-hidden="true" />` : ""}
+          <div class="player-still-watching-copy">
+            <div class="player-still-watching-kicker">${escapeHtml(t("still_watching_title", {}, "Are you still watching?"))}</div>
+            <div class="player-still-watching-title">${escapeHtml(titleLine || t("next_episode_label", {}, "Next episode"))}</div>
+            <div class="player-still-watching-status">${escapeHtml(t("still_watching_countdown", [this.stillWatchingPromptCountdownSec], "Stopping in %1$s"))}</div>
+          </div>
           <div class="player-still-watching-actions">
-            <button class="player-still-watching-btn focusable is-primary${this.stillWatchingPromptFocus === "continue" ? " focused" : ""}" type="button" tabindex="-1" data-player-pointer-action="stillWatchingContinue">${escapeHtml(t("still_watching_continue", {}, "Continue"))}</button>
-            <button class="player-still-watching-btn focusable${this.stillWatchingPromptFocus === "exit" ? " focused" : ""}" type="button" tabindex="-1" data-player-pointer-action="stillWatchingExit">${escapeHtml(t("still_watching_exit", {}, "Exit"))}</button>
+            <button class="player-still-watching-btn focusable${this.stillWatchingPromptFocus === "continue" ? " focused" : ""}" type="button" tabindex="-1" data-player-pointer-action="stillWatchingContinue"><span class="player-still-watching-btn-icon" aria-hidden="true">&#9654;</span><span>${escapeHtml(t("still_watching_continue", {}, "Play"))}</span></button>
+            <button class="player-still-watching-btn focusable is-secondary${this.stillWatchingPromptFocus === "exit" ? " focused" : ""}" type="button" tabindex="-1" data-player-pointer-action="stillWatchingExit"><span class="player-still-watching-btn-icon" aria-hidden="true">&#10005;</span><span>${escapeHtml(t("still_watching_exit", {}, "Exit"))}</span></button>
           </div>
         </div>
       `;
@@ -5943,7 +5944,7 @@ export const PlayerScreen = {
     this.consecutiveAutoPlayCount = 0;
     this.pauseOverlayVisible = false;
     this.renderPauseOverlay();
-    return this.navigateBackToStreamScreen();
+    return this.navigateBackToStreamScreen({ forceDetail: true });
   },
 
   getDisplayEpisodeTitle() {
@@ -6227,7 +6228,7 @@ export const PlayerScreen = {
     };
   },
 
-  navigateBackToStreamScreen() {
+  navigateBackToStreamScreen({ forceDetail = false } = {}) {
     if (this.playerBackNavigationInProgress) {
       return true;
     }
@@ -6242,7 +6243,7 @@ export const PlayerScreen = {
     } catch (_) {
       // Route cleanup will make a second best-effort stop if native teardown throws.
     }
-    const shouldReturnToStream = this.shouldReturnToStreamOnBack();
+    const shouldReturnToStream = !forceDetail && this.shouldReturnToStreamOnBack();
     Router.suppressNextPopstate?.(1500);
     Router.ignoreSinglePopstate?.();
     const targetRoute = shouldReturnToStream
@@ -17123,9 +17124,21 @@ export const PlayerScreen = {
     }
     this.clearPlaybackStallGuard();
     this.releaseStartupAudioGate({ resume: false });
-    const autoplayEnabled = Boolean(PlayerSettingsStore.get().autoplayNextEpisode);
+    const settings = PlayerSettingsStore.get();
+    const autoplayEnabled = Boolean(settings.autoplayNextEpisode);
     const canAutoplayNext = autoplayEnabled && this.hasPlaybackReachedNaturalEnd();
     if (canAutoplayNext) {
+      const nextEpisode = this.resolveNextEpisodeInfo();
+      if (shouldEnterStillWatchingPrompt({
+        stillWatchingEnabled: settings.stillWatchingEnabled,
+        autoPlayNextEpisodeEnabled: settings.autoplayNextEpisode,
+        nextEpisodeHasAired: nextEpisode?.hasAired,
+        consecutiveAutoPlayCount: this.consecutiveAutoPlayCount,
+        threshold: settings.stillWatchingEpisodeThreshold
+      })) {
+        this.enterStillWatchingPromptMode();
+        return;
+      }
       const nextEpisodeHandled = await this.playNextEpisode({ userInitiated: false });
       if (nextEpisodeHandled || this.nextEpisodeLaunching || Router.getCurrent() !== "player") {
         return;

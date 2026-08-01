@@ -929,6 +929,9 @@
 	
     <!-- UpdatePromptDialog -->
     <string name="update_title">Alkalmazásfrissítés</string>
+    <string name="update_installer_required">A TV-n lévő alkalmazás frissítéséhez használd a Nuvio WebTV Installert.</string>
+    <string name="update_release_notes">Újdonságok</string>
+    <string name="update_release_notes_unavailable">Nem érhető el kiadási leírás.</string>
     <string name="update_downloading">Frissítés letöltése</string>
     <string name="update_unknown_sources">A folytatáshoz engedélyezd a telepítést ismeretlen forrásokból.</string>	
     <!-- AccountScreen -->
@@ -1018,4 +1021,12 @@
     <string name="unsupported_device_required_platform">Szükséges platform</string>
     <string name="unsupported_device_close">Bezárás</string>
     <string name="unsupported_device_unavailable">Nem elérhető</string>
+    <string name="still_watching_title">Nézed még?</string>
+    <string name="still_watching_continue">Lejátszás</string>
+    <string name="still_watching_exit">Kilépés</string>
+    <string name="still_watching_countdown">Leállítás %1$d múlva</string>
+    <string name="still_watching_setting_title">Nézed még?</string>
+    <string name="still_watching_setting_sub">Kérdés egymás után automatikusan lejátszott epizódok után.</string>
+    <string name="still_watching_threshold_title">Epizód küszöb</string>
+    <string name="still_watching_threshold_sub">Az automatikusan lejátszott epizódok száma a kérdés előtt.</string>
 </resources>

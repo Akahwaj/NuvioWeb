@@ -1212,6 +1212,9 @@
     <string name="layout_selection_subtitle">Scegli il layout della tua schermata home</string>
     <string name="layout_selection_continue">Continua</string>
     <string name="update_title">Aggiornamento App</string>
+    <string name="update_installer_required">Usa Nuvio WebTV Installer per aggiornare l\'app sulla TV.</string>
+    <string name="update_release_notes">Novità</string>
+    <string name="update_release_notes_unavailable">Non è disponibile una descrizione della release.</string>
     <string name="update_downloading">Download aggiornamento in corso</string>
     <string name="update_download">Scarica</string>
     <string name="update_downloading_ellipsis">Download in corso…</string>

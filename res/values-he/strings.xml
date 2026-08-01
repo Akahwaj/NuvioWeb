@@ -773,6 +773,9 @@
     <string name="layout_preview_row">הצג שורת תצוגה מקדימה</string>
     <string name="layout_preview_row_sub">הצג תצוגה מקדימה חלקית של השורה הבאה בפריסת הבית המודרני.</string>
     <string name="update_title">עדכון אפליקציה</string>
+    <string name="update_installer_required">יש להשתמש ב-Nuvio WebTV Installer כדי לעדכן את האפליקציה בטלוויזיה.</string>
+    <string name="update_release_notes">מה חדש</string>
+    <string name="update_release_notes_unavailable">תיאור הגרסה אינו זמין.</string>
     <string name="update_downloading">מוריד עדכון</string>
     <string name="update_download">הורד</string>
     <string name="update_downloading_ellipsis">מוריד…</string>
@@ -963,4 +966,12 @@
     <string name="unsupported_device_required_platform">פלטפורמה נדרשת</string>
     <string name="unsupported_device_close">סגור</string>
     <string name="unsupported_device_unavailable">לא זמין</string>
+    <string name="still_watching_title">עדיין צופים?</string>
+    <string name="still_watching_continue">הפעל</string>
+    <string name="still_watching_exit">יציאה</string>
+    <string name="still_watching_countdown">עצירה בעוד %1$d</string>
+    <string name="still_watching_setting_title">עדיין צופים?</string>
+    <string name="still_watching_setting_sub">הצג בקשה לאחר פרקים שהופעלו אוטומטית ברצף.</string>
+    <string name="still_watching_threshold_title">סף פרקים</string>
+    <string name="still_watching_threshold_sub">מספר הפרקים שיופעלו אוטומטית לפני הצגת הבקשה.</string>
 </resources>

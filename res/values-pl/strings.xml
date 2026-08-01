@@ -890,6 +890,9 @@
     <string name="layout_selection_subtitle">Wybierz układ ekranu głównego</string>
     <string name="layout_selection_continue">Kontynuuj</string>
     <string name="update_title">Aktualizacja aplikacji</string>
+    <string name="update_installer_required">Użyj Nuvio WebTV Installer, aby zaktualizować aplikację na telewizorze.</string>
+    <string name="update_release_notes">Co nowego</string>
+    <string name="update_release_notes_unavailable">Opis wydania jest niedostępny.</string>
     <string name="update_downloading">Pobieranie aktualizacji</string>
     <string name="update_download">Pobierz</string>
     <string name="update_downloading_ellipsis">Pobieranie…</string>

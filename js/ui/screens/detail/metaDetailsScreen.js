@@ -11,6 +11,10 @@ import { TmdbService } from "../../../core/tmdb/tmdbService.js";
 import { TmdbMetadataService } from "../../../core/tmdb/tmdbMetadataService.js";
 import { LayoutPreferences } from "../../../data/local/layoutPreferences.js";
 import { imdbEpisodeRatingsRepository } from "../../../data/repository/imdbEpisodeRatingsRepository.js";
+import {
+  normalizeEpisodeImdbRating,
+  parseEpisodeRuntimeMinutes
+} from "./episodeCardMetadata.js";
 import { mdbListRepository } from "../../../data/repository/mdbListRepository.js";
 import { TmdbSettingsStore } from "../../../data/local/tmdbSettingsStore.js";
 import { PlayerSettingsStore } from "../../../data/local/playerSettingsStore.js";
@@ -168,8 +172,8 @@ function resolveSeasonEpisode(video = {}) {
 
 function toEpisodeEntry(video = {}) {
   const { season, episode } = resolveSeasonEpisode(video);
-  const runtimeMinutes = Number(
-    video.runtime || video.runtimeMinutes || video.durationMinutes || video.duration || 0
+  const runtimeMinutes = parseEpisodeRuntimeMinutes(
+    video.runtime || video.runtimeMinutes || video.durationMinutes || video.duration
   );
   return {
     id: video.id || "",
@@ -178,7 +182,7 @@ function toEpisodeEntry(video = {}) {
     episode,
     thumbnail: video.thumbnail || null,
     overview: video.overview || video.description || "",
-    runtimeMinutes: Number.isFinite(runtimeMinutes) && runtimeMinutes > 0 ? runtimeMinutes : 0,
+    runtimeMinutes,
     released:
       video.released ||
       video.releaseDate ||
@@ -695,13 +699,11 @@ function resolveEpisodeImdbRating(episode = {}, seriesRatingsBySeason = {}) {
   const seasonRating = seriesRatingsBySeason?.[episode.season]?.find(
     (entry) => Number(entry?.episode || 0) === Number(episode.episode || 0)
   )?.rating;
-  if (seasonRating != null && String(seasonRating).trim() !== "") {
-    return seasonRating;
+  const normalizedSeasonRating = normalizeEpisodeImdbRating(seasonRating);
+  if (normalizedSeasonRating != null) {
+    return normalizedSeasonRating;
   }
-  if (episode?.imdbRating != null && String(episode.imdbRating).trim() !== "") {
-    return episode.imdbRating;
-  }
-  return null;
+  return normalizeEpisodeImdbRating(episode?.imdbRating);
 }
 
 function formatRuntimeMinutes(runtime) {
@@ -2592,30 +2594,17 @@ export const MetaDetailsScreen = {
       if (!meta?.id || !this.episodes?.length) {
         return {};
       }
-      const tmdbId = await TmdbService.ensureTmdbId(meta.id, "series");
-      if (!tmdbId) {
+      const imdbId = resolveMetaImdbId(meta, this.params);
+      const knownTmdbId = resolveMetaTmdbId(meta, this.params);
+      const tmdbId = knownTmdbId || await TmdbService.ensureTmdbId(meta.id, "series", {
+        // Episode IMDb ratings are independent from optional TMDB metadata
+        // enrichment, matching Android TV's detail-screen behavior.
+        requireEnabled: false
+      });
+      if (!imdbId && !tmdbId) {
         return {};
       }
-      const directRatings = await imdbEpisodeRatingsRepository.getSeasonRatingsByTmdbId(tmdbId);
-      if (Object.keys(directRatings || {}).length) {
-        return directRatings;
-      }
-      const seasons = Array.from(
-        new Set(
-          this.episodes.map((episode) => Number(episode.season || 0)).filter((value) => value > 0)
-        )
-      );
-      const entries = await Promise.all(
-        seasons.map(async (season) => {
-          const ratings = await TmdbMetadataService.fetchSeasonRatings({
-            tmdbId,
-            seasonNumber: season,
-            language: TmdbSettingsStore.get().language
-          });
-          return [season, ratings];
-        })
-      );
-      return Object.fromEntries(entries);
+      return await imdbEpisodeRatingsRepository.getEpisodeRatings({ imdbId, tmdbId });
     } catch (error) {
       console.warn("Series ratings enrichment failed", error);
       return {};

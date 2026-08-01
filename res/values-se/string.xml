@@ -786,6 +786,9 @@
 
     <!-- UpdatePromptDialog -->
     <string name="update_title">Appuppdatering</string>
+    <string name="update_installer_required">Använd Nuvio WebTV Installer för att uppdatera appen på TV:n.</string>
+    <string name="update_release_notes">Nyheter</string>
+    <string name="update_release_notes_unavailable">Ingen versionsbeskrivning är tillgänglig.</string>
     <string name="update_downloading">Laddar ner uppdatering</string>
     <string name="update_unknown_sources">Tillåt installation från okända källor för att fortsätta.</string>
     <!-- AccountScreen -->
@@ -855,4 +858,12 @@
     <string name="player.audio.noSupportedTracks">Inga ljudspår som stöds är tillgängliga</string>
     <string name="settings_stream_addon_logo_title">Tilläggslogotyp</string>
     <string name="settings_stream_addon_logo_description">Visa tilläggets logotyp och namn bredvid strömkällor.</string>
+    <string name="still_watching_title">Tittar du fortfarande?</string>
+    <string name="still_watching_continue">Spela</string>
+    <string name="still_watching_exit">Avsluta</string>
+    <string name="still_watching_countdown">Stoppar om %1$d</string>
+    <string name="still_watching_setting_title">Tittar du fortfarande?</string>
+    <string name="still_watching_setting_sub">Fråga efter flera automatiskt uppspelade avsnitt i följd.</string>
+    <string name="still_watching_threshold_title">Avsnittsgräns</string>
+    <string name="still_watching_threshold_sub">Antal automatiskt uppspelade avsnitt innan frågan visas.</string>
 </resources>
