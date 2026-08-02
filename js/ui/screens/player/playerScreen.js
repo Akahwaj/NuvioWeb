@@ -8756,13 +8756,10 @@ export const PlayerScreen = {
           }
         );
       }
-      if (this.currentEngineFsStream) {
-        this.renderSourcesPanel();
-      } else if (this.streamCandidates.length > 1) {
-        this.openSourcesPanel();
-      } else {
-        this.renderSourcesPanel();
-      }
+      // Keep source switching user-initiated after an in-playback failure. Opening
+      // the panel here steals focus from the player (notably on webOS) and differs
+      // from Android TV, where fatal playback errors do not open Sources.
+      this.renderSourcesPanel();
 
       console.warn("Playback failed", {
         url: this.activePlaybackUrl,
