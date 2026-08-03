@@ -1380,14 +1380,14 @@ export const PlayerController = {
 
   retryAvPlaySubtitleTrackSelection(
     trackIndex,
-    { nudge = false, renderMode = this.avplaySubtitleRenderMode } = {}
+    { force = false, nudge = false, renderMode = this.avplaySubtitleRenderMode } = {}
   ) {
     const canonicalIndex = this.resolveAvPlaySubtitleTrackIndex(trackIndex);
     if (canonicalIndex < 0) {
       return false;
     }
     const currentIndex = this.getCurrentAvPlaySubtitleTrackIndex();
-    if (currentIndex === canonicalIndex) {
+    if (currentIndex === canonicalIndex && !force) {
       // Selection and rendering are separate AVPlay states. Reapply the
       // renderer even when Samsung already reports the requested track.
       this.applyAvPlaySubtitleRenderMode(renderMode);
@@ -1645,6 +1645,21 @@ export const PlayerController = {
     }
   },
 
+  retryPendingAvPlayStartupAudioTrackSelection() {
+    const pendingIndex = Number(this.pendingAvPlayAudioTrackIndex);
+    if (!Number.isFinite(pendingIndex) || pendingIndex < 0) {
+      return false;
+    }
+
+    const deadline = Number(this.desiredAvPlayAudioTrackUntil || 0);
+    if (deadline > 0 && Date.now() >= deadline) {
+      this.pendingAvPlayAudioTrackIndex = -1;
+      return false;
+    }
+
+    return this.applyPendingAvPlayAudioTrackSelection();
+  },
+
   nudgeAvPlayAfterTrackSwitch() {
     const avplay = this.getAvPlay();
     if (!avplay || typeof avplay.seekTo !== "function") {
@@ -1676,6 +1691,10 @@ export const PlayerController = {
     const selectionToken = Number(this.avplaySubtitleSelectionToken || 0) + 1;
     this.avplaySubtitleSelectionToken = selectionToken;
     this.avplaySubtitleRenderMode = normalizeAvPlaySubtitleRenderMode(renderMode);
+    // AVPlay can keep reporting the previous TEXT index after subtitles were
+    // hidden. Match Android's explicit TEXT re-enable by forcing only the
+    // bounded retries that return from Off/an addon to a built-in track.
+    const shouldForceSubtitleReactivation = Boolean(this.avplaySubtitlesSilent);
 
     const targetIndex = Number(trackIndex);
     if (!Number.isFinite(targetIndex) || targetIndex < 0) {
@@ -1757,6 +1776,7 @@ export const PlayerController = {
           return;
         }
         this.retryAvPlaySubtitleTrackSelection(canonicalIndex, {
+          force: shouldForceSubtitleReactivation,
           renderMode: this.avplaySubtitleRenderMode
         });
         this.syncAvPlayTrackInfo({ force: true });
@@ -2300,6 +2320,7 @@ export const PlayerController = {
           }
           this.avplayReady = true;
           this.reapplyAvPlayPlaybackRate();
+          this.retryPendingAvPlayStartupAudioTrackSelection();
           this.applyAvPlayExternalSubtitleDelay();
           this.emitVideoEvent("canplay", { playbackEngine: this.playbackEngine });
         },
@@ -2311,6 +2332,7 @@ export const PlayerController = {
           if (Number.isFinite(value) && value >= 0) {
             this.avplayCurrentTimeMs = value;
           }
+          this.retryPendingAvPlayStartupAudioTrackSelection();
           this.applyAvPlayExternalSubtitleDelay();
           this.emitVideoEvent("timeupdate", { playbackEngine: this.playbackEngine });
         },

@@ -281,12 +281,11 @@ function isSeriesDetailMeta(meta = {}, episodes = null) {
   if (normalizedType === "series") {
     return true;
   }
-  if (normalizedType !== "tv") {
-    return false;
-  }
   const resolvedEpisodes = Array.isArray(episodes)
     ? episodes
     : normalizeEpisodes(meta?.videos || []);
+  // Match Android TV: addon-defined types such as `other` are episodic when
+  // their full meta contains valid season/episode videos.
   return resolvedEpisodes.length > 0;
 }
 

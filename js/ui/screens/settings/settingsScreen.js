@@ -315,6 +315,11 @@ const PREFERRED_PLAYBACK_LANGUAGE_OPTIONS = [
   { id: "none", labelKey: "common.none" },
   ...AVAILABLE_LANGUAGES
 ];
+const SECONDARY_PLAYBACK_LANGUAGE_OPTIONS = [
+  { id: "none", labelKey: "common.none" },
+  { id: "original", labelKey: "audio_lang_original", label: "Original language" },
+  ...AVAILABLE_LANGUAGES
+];
 
 const STREAM_AUTOPLAY_MODE_OPTIONS = [
   {
@@ -5231,6 +5236,17 @@ export const SettingsScreen = {
         }
       });
     });
+    this.actionMap.set("playback:secondaryAudioLanguage", () => {
+      this.openOptionDialog({
+        title: t("sub_secondary_lang", {}, "Secondary Preferred Language"),
+        options: SECONDARY_PLAYBACK_LANGUAGE_OPTIONS,
+        selectedId: PlayerSettingsStore.get().secondaryPreferredAudioLanguage,
+        returnFocusKey: "playback:secondaryAudioLanguage",
+        onSelect: (option) => {
+          PlayerSettingsStore.set({ secondaryPreferredAudioLanguage: option.id });
+        }
+      });
+    });
     this.actionMap.set("playback:subtitlesEnabled", () => {
       PlayerSettingsStore.set({ subtitlesEnabled: !PlayerSettingsStore.get().subtitlesEnabled });
     });
@@ -5649,6 +5665,16 @@ export const SettingsScreen = {
           title: t("settings.playback.preferredAudio.title"),
           subtitle: t("settings.playback.preferredAudio.subtitle"),
           value: labelForPlaybackLanguage(model.player.preferredAudioLanguage)
+        })}
+        ${this.renderActionRow({
+          focusKey: "playback:secondaryAudioLanguage",
+          title: t("sub_secondary_lang", {}, "Secondary Preferred Language"),
+          subtitle: t(
+            "settings.playback.preferredAudio.subtitle",
+            {},
+            "Choose the audio language to prefer when it is available."
+          ),
+          value: labelForPlaybackLanguage(model.player.secondaryPreferredAudioLanguage)
         })}
       </div>
     `;

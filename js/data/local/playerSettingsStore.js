@@ -13,6 +13,7 @@ const DEFAULTS = {
   subtitleLanguage: "off",
   secondarySubtitleLanguage: "off",
   preferredAudioLanguage: "system",
+  secondaryPreferredAudioLanguage: "none",
   trailerAutoplay: false,
   skipIntroEnabled: true,
   nextEpisodeThresholdMode: "PERCENTAGE",
@@ -287,6 +288,17 @@ export function normalizePlayerSettings(settings = {}) {
       settings.stillWatchingEpisodeThreshold ?? DEFAULTS.stillWatchingEpisodeThreshold
     ),
     subtitlesEnabled,
+    secondaryPreferredAudioLanguage: (() => {
+      const normalized = String(
+        persistentSettings.secondaryPreferredAudioLanguage ??
+          DEFAULTS.secondaryPreferredAudioLanguage
+      )
+        .trim()
+        .toLowerCase();
+      return !normalized || ["default", "device", "forced", "off"].includes(normalized)
+        ? "none"
+        : normalized;
+    })(),
     subtitleLanguage: preferredLanguage,
     secondarySubtitleLanguage: secondaryPreferredLanguage,
     subtitleStyle: {

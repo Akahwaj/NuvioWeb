@@ -13861,29 +13861,30 @@ export const PlayerScreen = {
 
   getStartupPreferredAudioLanguageTargets() {
     const settings = PlayerSettingsStore.get();
-    const configured = String(settings.preferredAudioLanguage || "system")
+    const primary = String(settings.preferredAudioLanguage || "system")
       .trim()
       .toLowerCase();
-    if (!configured || configured === "off" || configured === "none") {
-      return [];
-    }
-
-    if (configured === "system") {
-      const systemLanguage = this.getStartupSystemAudioLanguageTarget();
-      return systemLanguage ? [systemLanguage] : [];
-    }
-
-    if (configured === "original") {
-      const originalLanguage = normalizeTrackLanguageCode(this.contentLanguage);
-      if (originalLanguage) {
-        return [originalLanguage];
+    const secondary = String(settings.secondaryPreferredAudioLanguage || "none")
+      .trim()
+      .toLowerCase();
+    const originalLanguage = normalizeTrackLanguageCode(this.contentLanguage);
+    const systemLanguage = this.getStartupSystemAudioLanguageTarget();
+    const resolve = (configured, { primaryPreference = false } = {}) => {
+      if (!configured || ["default", "off", "none", "forced"].includes(configured)) {
+        return "";
       }
-      const systemLanguage = this.getStartupSystemAudioLanguageTarget();
-      return systemLanguage ? [systemLanguage] : [];
-    }
+      if (configured === "system" || configured === "device") {
+        return primaryPreference ? systemLanguage : "";
+      }
+      if (configured === "original") {
+        return originalLanguage || (primaryPreference ? systemLanguage : "");
+      }
+      return normalizeTrackLanguageCode(configured);
+    };
 
-    const normalized = normalizeTrackLanguageCode(configured);
-    return normalized ? [normalized] : [];
+    return Array.from(
+      new Set([resolve(primary, { primaryPreference: true }), resolve(secondary)].filter(Boolean))
+    );
   },
 
   getStartupSystemAudioLanguageTarget() {

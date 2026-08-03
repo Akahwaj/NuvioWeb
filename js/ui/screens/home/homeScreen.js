@@ -130,6 +130,10 @@ export { escapeAttribute, escapeHtml, formatCatalogRowTitle } from "./homeUtils.
 
 const MODERN_SIDEBAR_PILL_AUTO_COLLAPSE_MS = 4000;
 const CW_RELEASE_ALERT_MAX_AGE_MS = 60 * 24 * 60 * 60 * 1000;
+const HOME_LAZY_IMAGE_SELECTOR =
+  ".home-main .content-poster[data-src], .home-main .home-poster-landscape-logo[data-src], .home-main .home-continue-bg[data-src]";
+const HOME_LAZY_IMAGE_ROW_SELECTOR =
+  ".home-row, .home-modern-row, .home-grid-section, .home-row-continue";
 
 function homePerfNow() {
   return typeof performance !== "undefined" && typeof performance.now === "function"
@@ -7940,6 +7944,11 @@ export const HomeScreen = {
     if (canResumePreservedTizenHome) {
       this.homeDomPreserved = false;
       this.container.classList.remove("home-dom-preserved");
+      this.container.style.removeProperty("position");
+      this.container.style.removeProperty("top");
+      this.container.style.removeProperty("right");
+      this.container.style.removeProperty("bottom");
+      this.container.style.removeProperty("left");
       this.container.style.removeProperty("visibility");
       this.container.style.removeProperty("pointer-events");
       setModernSidebarPillIconOnly(this.container, this.pillIconOnly);
@@ -9065,7 +9074,7 @@ export const HomeScreen = {
     this.renderedLayoutMode = this.layoutMode;
     this.ensureHomeTruncationObservers();
     this.scheduleHomeTruncationUpdate();
-    this.scheduleHomeLazyImageHydration();
+    this.scheduleHomeLazyImageHydration(null, { refreshIndex: true });
     this.scheduleReturnFocusRestore();
     const mountedRows = Number(this.navModel?.rows?.length || 0);
     const mountedCards = Number(
@@ -9082,11 +9091,14 @@ export const HomeScreen = {
     });
   },
 
-  scheduleHomeLazyImageHydration(anchorNode = null) {
+  scheduleHomeLazyImageHydration(anchorNode = null, { refreshIndex = false } = {}) {
     if (anchorNode instanceof HTMLElement) {
       this.pendingHomeLazyImageAnchor = anchorNode;
     } else {
       this.homeLazyImageHydrationNeedsFullScan = true;
+    }
+    if (refreshIndex) {
+      this.homeLazyImageHydrationNeedsIndexRefresh = true;
     }
     if (this.modernVerticalFastScrollState) {
       return;
@@ -9100,16 +9112,34 @@ export const HomeScreen = {
       this.pendingHomeLazyImageAnchor = null;
       const forceFullScan = Boolean(this.homeLazyImageHydrationNeedsFullScan);
       this.homeLazyImageHydrationNeedsFullScan = false;
-      this.hydrateHomeLazyImages(anchor, { forceFullScan });
+      const shouldRefreshIndex = Boolean(this.homeLazyImageHydrationNeedsIndexRefresh);
+      this.homeLazyImageHydrationNeedsIndexRefresh = false;
+      this.hydrateHomeLazyImages(anchor, { forceFullScan, refreshIndex: shouldRefreshIndex });
     });
   },
 
-  hydrateHomeLazyImages(anchorNode = null, { forceFullScan = false } = {}) {
+  buildHomeLazyImageHydrationIndex() {
+    if (!this.container) {
+      this.homeLazyImageHydrationIndex = null;
+      return [];
+    }
+    const imagesByRow = new Map();
+    Array.from(this.container.querySelectorAll(HOME_LAZY_IMAGE_SELECTOR)).forEach((image) => {
+      const row = image.closest(HOME_LAZY_IMAGE_ROW_SELECTOR);
+      const rowImages = imagesByRow.get(row) || [];
+      rowImages.push(image);
+      imagesByRow.set(row, rowImages);
+    });
+    const index = Array.from(imagesByRow, ([row, images]) => ({ row, images }));
+    this.homeLazyImageHydrationIndex = index;
+    return index;
+  },
+
+  hydrateHomeLazyImages(anchorNode = null, { forceFullScan = false, refreshIndex = false } = {}) {
     if (!this.container) {
       return;
     }
-    const rowSelector = ".home-row, .home-modern-row, .home-grid-section, .home-row-continue";
-    const anchorRow = anchorNode?.closest?.(rowSelector) || null;
+    const anchorRow = anchorNode?.closest?.(HOME_LAZY_IMAGE_ROW_SELECTOR) || null;
     if (
       !forceFullScan &&
       anchorRow instanceof HTMLElement &&
@@ -9122,12 +9152,11 @@ export const HomeScreen = {
       return;
     }
     this.lastHomeLazyImageHydrationAnchorRow = anchorRow;
-    const images = Array.from(
-      this.container.querySelectorAll(
-        ".home-main .content-poster[data-src], .home-main .home-poster-landscape-logo[data-src], .home-main .home-continue-bg[data-src]"
-      )
-    );
-    if (!images.length) {
+    const imageRows =
+      refreshIndex || !Array.isArray(this.homeLazyImageHydrationIndex)
+        ? this.buildHomeLazyImageHydrationIndex()
+        : this.homeLazyImageHydrationIndex;
+    if (!imageRows.length) {
       return;
     }
     const viewport =
@@ -9137,14 +9166,10 @@ export const HomeScreen = {
     const viewportRect = viewport.getBoundingClientRect();
     const verticalMargin = Platform.isWebOS() || Platform.isTizen() ? 720 : 1200;
     const horizontalMargin = Platform.isWebOS() || Platform.isTizen() ? 520 : 1000;
-    const imagesByRow = new Map();
-    images.forEach((image) => {
-      const row = image.closest(rowSelector);
-      const rowImages = imagesByRow.get(row) || [];
-      rowImages.push(image);
-      imagesByRow.set(row, rowImages);
-    });
-    imagesByRow.forEach((rowImages, row) => {
+    imageRows.forEach(({ row, images }) => {
+      if (row instanceof HTMLElement && !row.isConnected) {
+        return;
+      }
       const shouldHydrateFocusedRow = Boolean(anchorRow && row === anchorRow);
       if (!shouldHydrateFocusedRow && row instanceof HTMLElement) {
         const rowRect = row.getBoundingClientRect();
@@ -9155,8 +9180,8 @@ export const HomeScreen = {
           return;
         }
       }
-      rowImages.forEach((image) => {
-        if (!(image instanceof HTMLImageElement)) {
+      images.forEach((image) => {
+        if (!(image instanceof HTMLImageElement) || !image.isConnected) {
           return;
         }
         const src = String(image.dataset.src || "").trim();
@@ -10317,7 +10342,7 @@ export const HomeScreen = {
       this.invalidateNavigationModel();
       this.buildNavigationModel();
     }
-    this.scheduleHomeLazyImageHydration();
+    this.scheduleHomeLazyImageHydration(null, { refreshIndex: true });
     return true;
   },
 
@@ -10526,7 +10551,7 @@ export const HomeScreen = {
             this.invalidateNavigationModel();
             this.buildNavigationModel();
           }
-          this.scheduleHomeLazyImageHydration();
+          this.scheduleHomeLazyImageHydration(null, { refreshIndex: true });
           return true;
         };
         if (totalVisible < currentItems.length) {
@@ -10764,6 +10789,8 @@ export const HomeScreen = {
     }
     this.pendingHomeLazyImageAnchor = null;
     this.homeLazyImageHydrationNeedsFullScan = false;
+    this.homeLazyImageHydrationNeedsIndexRefresh = false;
+    this.homeLazyImageHydrationIndex = null;
     this.lastHomeLazyImageHydrationAnchorRow = null;
     this.lastDirectionalKeyAtByDirection = {};
     this.homeTruncationScope = null;
