@@ -8136,17 +8136,45 @@ export const HomeScreen = {
         });
     });
 
+    // Installed-addon state can contain the same manifest catalog more than
+    // once. Collapse only descriptors that would issue the exact same request;
+    // addons that reuse ids on different base URLs must retain the existing
+    // last-row-wins behavior.
+    const seenCatalogDescriptors = new Set();
+    const uniqueCatalogDescriptors = catalogDescriptors.filter((descriptor) => {
+      const descriptorKey = JSON.stringify([
+        descriptor?.addonBaseUrl || "",
+        descriptor?.addonId || "",
+        descriptor?.addonName || "",
+        descriptor?.catalogId || "",
+        descriptor?.catalogName || "",
+        descriptor?.type || ""
+      ]);
+      if (seenCatalogDescriptors.has(descriptorKey)) {
+        return false;
+      }
+      seenCatalogDescriptors.add(descriptorKey);
+      return true;
+    });
+    if (HOME_PERF_DEBUG) {
+      logHomePerf("catalogDescriptors", {
+        requested: catalogDescriptors.length,
+        unique: uniqueCatalogDescriptors.length,
+        duplicates: catalogDescriptors.length - uniqueCatalogDescriptors.length
+      });
+    }
+
     // Seed missing order keys from manifest order before progressive requests
     // can add rows in network-completion order.
     HomeCatalogStore.ensureOrderKeys(
-      catalogDescriptors.map((catalog) =>
+      uniqueCatalogDescriptors.map((catalog) =>
         buildCatalogOrderKey(catalog.addonId, catalog.type, catalog.catalogId)
       )
     );
 
     const initialCatalogLoad = this.getInitialCatalogLoadCount();
-    const initialDescriptors = catalogDescriptors.slice(0, initialCatalogLoad);
-    const deferredDescriptors = catalogDescriptors.slice(initialCatalogLoad);
+    const initialDescriptors = uniqueCatalogDescriptors.slice(0, initialCatalogLoad);
+    const deferredDescriptors = uniqueCatalogDescriptors.slice(initialCatalogLoad);
 
     const progressiveInitialRows = new Map();
     const initialRows = await this.fetchCatalogRows(initialDescriptors, {
@@ -8505,19 +8533,6 @@ export const HomeScreen = {
     const onRow = typeof options?.onRow === "function" ? options.onRow : null;
     const fetchedRows = [];
     const normalizedDescriptors = Array.isArray(descriptors) ? descriptors : [];
-    if (HOME_PERF_DEBUG) {
-      const descriptorKeys = normalizedDescriptors.map((descriptor) =>
-        buildModernRowKey(descriptor)
-      );
-      const uniqueDescriptorCount = new Set(descriptorKeys).size;
-      logHomePerf("fetchCatalogRows", {
-        requested: Number(normalizedDescriptors.length || 0),
-        unique: uniqueDescriptorCount,
-        duplicates: Number(normalizedDescriptors.length || 0) - uniqueDescriptorCount,
-        batchSize: Number(batchSize || 0),
-        allowLoading
-      });
-    }
 
     const fetchBatch = async (batchDescriptors = []) => {
       const rowResults = await Promise.all(
@@ -8893,7 +8908,7 @@ export const HomeScreen = {
       this.sidebarExpanded && retainedFocusState?.focusKind === "sidebar"
     );
 
-    this.container.innerHTML = `
+    const nextMarkup = `
       <div class="home-shell home-screen-shell ${layoutClass}"${sizingStyle ? ` style="${escapeAttribute(sizingStyle)}"` : ""}>
         ${renderRootSidebar({
           selectedRoute: "home",
@@ -8911,6 +8926,23 @@ export const HomeScreen = {
       </div>
       ${this.renderActiveHoldMenu()}
     `;
+
+    // Returning to Home re-renders several times as cached rows, the background
+    // refresh and the catalog rows each land. When a pass produces markup the
+    // DOM already holds, writing it back costs a full parse, layout and paint of
+    // every card for no visible change - and it destroys the live nodes, which
+    // is what forces focus and scroll to be re-derived afterwards.
+    //
+    // Keep the last generated markup itself: exact equality is required because
+    // addon/catalog text is part of this string and fixed-width hashes can
+    // collide, which could otherwise preserve stale DOM.
+    const shellMounted = Boolean(this.container.querySelector(".home-shell"));
+    const markupUnchanged = shellMounted && this.renderedMarkup === nextMarkup;
+
+    if (!markupUnchanged) {
+      this.container.innerHTML = nextMarkup;
+      this.renderedMarkup = nextMarkup;
+    }
 
     if (modernLandscapePostersEnabled) {
       this.applyCachedModernLandscapePosterMetrics(
@@ -9082,6 +9114,7 @@ export const HomeScreen = {
     );
     logHomePerf("render", {
       ms: Number((homePerfNow() - renderStart).toFixed(2)),
+      domWrite: !markupUnchanged,
       layoutMode: this.layoutMode,
       rows: Number(this.rows?.length || 0),
       mountedRows,
@@ -10833,6 +10866,7 @@ export const HomeScreen = {
       this.container.style.removeProperty("left");
       this.container.style.removeProperty("visibility");
       this.container.style.removeProperty("pointer-events");
+      this.renderedMarkup = null;
       ScreenUtils.hide(this.container);
     }
   }
