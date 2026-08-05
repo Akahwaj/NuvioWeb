@@ -768,7 +768,7 @@ export const SearchScreen = {
           <span class="search-empty-icon material-icons" aria-hidden="true">search</span>
           <h2>${escapeHtml(t("search_start_title", {}, "Start Searching"))}</h2>
           <p>${escapeHtml(
-            this.layoutPrefs?.searchDiscoverEnabled
+            this.layoutPrefs?.discoverLocation === "in_search"
               ? t("search_start_subtitle", {}, "Enter at least 2 characters")
               : t(
                   "search_start_subtitle_no_discover",
@@ -855,9 +855,9 @@ export const SearchScreen = {
           pillIconOnly: Boolean(this.pillIconOnly)
         })}
         <main class="home-main search-content">
-          <section class="search-header${this.layoutPrefs?.searchDiscoverEnabled ? "" : " no-discover"}">
+          <section class="search-header${this.layoutPrefs?.discoverLocation === "in_search" ? "" : " no-discover"}">
             ${
-              this.layoutPrefs?.searchDiscoverEnabled
+              this.layoutPrefs?.discoverLocation === "in_search"
                 ? `
               <button class="search-discover-btn focusable" data-action="openDiscover">
                 <span class="search-action-icon material-icons" aria-hidden="true">explore</span>
@@ -1737,7 +1737,7 @@ export const SearchScreen = {
 
     if (action === "openDetail") this.openDetailFromNode(node);
     if (action === "openCatalogSeeAll") this.openCatalogSeeAllFromNode(node);
-    if (action === "openDiscover" && this.layoutPrefs?.searchDiscoverEnabled)
+    if (action === "openDiscover" && this.layoutPrefs?.discoverLocation === "in_search")
       Router.navigate("discover");
     if (action === "openVoice") this.handleVoiceSearch();
   },

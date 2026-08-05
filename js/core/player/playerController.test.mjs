@@ -160,3 +160,71 @@ test("expired AVPlay startup audio selection is discarded", () => {
   assert.equal(controller.pendingAvPlayAudioTrackIndex, -1);
   assert.equal(attempts, 0);
 });
+
+test("AVPlay uses Android-aligned start and resume buffering limits", () => {
+  const calls = [];
+  const controller = Object.create(PlayerController);
+  Object.assign(controller, {
+    getAvPlay: () => ({
+      setBufferingParam(option, unit, seconds) {
+        calls.push(["setBufferingParam", option, unit, seconds]);
+      },
+      setTimeoutForBuffering(seconds) {
+        calls.push(["setTimeoutForBuffering", seconds]);
+      }
+    })
+  });
+
+  controller.configureAvPlayBuffering();
+
+  assert.deepEqual(calls, [
+    ["setBufferingParam", "PLAYER_BUFFER_FOR_PLAY", "PLAYER_BUFFER_SIZE_IN_SECOND", 5],
+    ["setBufferingParam", "PLAYER_BUFFER_FOR_RESUME", "PLAYER_BUFFER_SIZE_IN_SECOND", 4],
+    ["setTimeoutForBuffering", 10]
+  ]);
+});
+
+test("unsupported AVPlay buffering controls do not abort source setup", () => {
+  let timeoutSeconds = 0;
+  const controller = Object.create(PlayerController);
+  Object.assign(controller, {
+    getAvPlay: () => ({
+      setBufferingParam() {
+        throw new Error("NotSupportedError");
+      },
+      setTimeoutForBuffering(seconds) {
+        timeoutSeconds = seconds;
+      }
+    })
+  });
+
+  assert.doesNotThrow(() => controller.configureAvPlayBuffering());
+  assert.equal(timeoutSeconds, 10);
+});
+
+test("movie progress identity is independent from the selected source", () => {
+  const controller = Object.create(PlayerController);
+  Object.assign(controller, {
+    currentItemId: "tt123",
+    currentItemType: "movie",
+    currentVideoId: "addon-specific-video-id"
+  });
+
+  assert.equal(controller.createProgressContext().videoId, null);
+});
+
+test("series progress keeps the exact episode video identity", () => {
+  const controller = Object.create(PlayerController);
+  Object.assign(controller, {
+    currentItemId: "tt123",
+    currentItemType: "series",
+    currentVideoId: "tt123:1:2",
+    currentSeason: 1,
+    currentEpisode: 2
+  });
+
+  const context = controller.createProgressContext();
+  assert.equal(context.videoId, "tt123:1:2");
+  assert.equal(context.season, 1);
+  assert.equal(context.episode, 2);
+});

@@ -2470,12 +2470,16 @@ export const StreamScreen = {
     let resumeProgressPercent = hasRouteResume ? routeResumeProgress.progressPercent : null;
     let resumeDurationMs = hasRouteResume ? routeResumeProgress.durationMs : 0;
     if (!startFromBeginning && resumePositionMs <= 0 && !(Number(resumeProgressPercent) > 0)) {
+      const resumeTarget =
+        itemType === "series" || itemType === "tv"
+          ? {
+              videoId: this.params?.videoId || null,
+              season: this.params?.season,
+              episode: this.params?.episode
+            }
+          : {};
       const resumeProgress = await watchProgressRepository
-        .getResumeByContentId(this.params?.itemId, {
-          videoId: this.params?.videoId || null,
-          season: this.params?.season,
-          episode: this.params?.episode
-        })
+        .getResumeByContentId(this.params?.itemId, resumeTarget)
         .catch((error) => {
           console.warn("Stream resume lookup failed", error);
           return null;
