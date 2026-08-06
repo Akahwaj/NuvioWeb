@@ -159,8 +159,23 @@ function ensureExperienceSettingsContract(blob = {}) {
   };
 }
 
-function encodePreferenceValue(value) {
+function shouldSerializeLayoutStringArrayAsString(featureName = "", keyName = "") {
+  return (
+    String(featureName || "").trim() === "layout_settings" &&
+    ["hero_catalog_keys", "home_catalog_order_keys", "disabled_home_catalog_keys"].includes(
+      String(keyName || "").trim()
+    )
+  );
+}
+
+export function encodePreferenceValue(value, keyName = "", featureName = "") {
   if (isEncodedPreferenceValue(value)) {
+    if (shouldSerializeLayoutStringArrayAsString(featureName, keyName) && value.type === "string_set") {
+      const normalized = Array.isArray(value.value)
+        ? value.value.map((entry) => String(entry || "").trim()).filter(Boolean)
+        : [];
+      return { type: "string", value: JSON.stringify(Array.from(new Set(normalized)).sort()) };
+    }
     return cloneValue(value);
   }
   if (typeof value === "string") {
@@ -175,12 +190,16 @@ function encodePreferenceValue(value) {
       : { type: "float", value };
   }
   if (Array.isArray(value) && value.every((entry) => typeof entry === "string")) {
-    return { type: "string_set", value: Array.from(new Set(value)).sort() };
+    const normalized = Array.from(new Set(value)).sort();
+    if (shouldSerializeLayoutStringArrayAsString(featureName, keyName)) {
+      return { type: "string", value: JSON.stringify(normalized) };
+    }
+    return { type: "string_set", value: normalized };
   }
   return null;
 }
 
-function encodeFeaturePayload(featurePayload = {}) {
+function encodeFeaturePayload(featurePayload = {}, featureName = "") {
   if (!isPlainObject(featurePayload)) {
     return {};
   }
@@ -189,7 +208,7 @@ function encodeFeaturePayload(featurePayload = {}) {
     if (!normalizedKey) {
       return accumulator;
     }
-    const encodedValue = encodePreferenceValue(value);
+    const encodedValue = encodePreferenceValue(value, normalizedKey, featureName);
     if (encodedValue) {
       accumulator[normalizedKey] = encodedValue;
     }
@@ -2007,7 +2026,7 @@ function buildOutgoingBlob(profileId, baseBlob = null) {
   const normalizedBase = normalizeBlob(baseBlob || {});
   const nextFeatures = Object.entries(normalizedBase.features).reduce(
     (accumulator, [featureName, featurePayload]) => {
-      const encodedPayload = encodeFeaturePayload(featurePayload);
+      const encodedPayload = encodeFeaturePayload(featurePayload, featureName);
       if (hasObjectEntries(encodedPayload) || SUPPORTED_FEATURE_NAMES.includes(featureName)) {
         accumulator[featureName] = encodedPayload;
       }
@@ -2019,7 +2038,7 @@ function buildOutgoingBlob(profileId, baseBlob = null) {
   SUPPORTED_FEATURE_NAMES.forEach((featureName) => {
     nextFeatures[featureName] = {
       ...(nextFeatures[featureName] || {}),
-      ...encodeFeaturePayload(FEATURE_ADAPTERS[featureName].export(profileId))
+      ...encodeFeaturePayload(FEATURE_ADAPTERS[featureName].export(profileId), featureName)
     };
   });
 
