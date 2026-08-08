@@ -3,7 +3,9 @@ import { AuthManager } from "../auth/authManager.js";
 import { SupabaseApi } from "../../data/remote/supabase/supabaseApi.js";
 import { ThemeStore } from "../../data/local/themeStore.js";
 import { LayoutPreferences } from "../../data/local/layoutPreferences.js";
-import { HomeCatalogStore } from "../../data/local/homeCatalogStore.js";
+import { ExperienceModeStore } from "../../data/local/experienceModeStore.js";
+import { TrackPreferencesStore } from "../../data/local/trackPreferencesStore.js";
+import { ContinueWatchingPreferences } from "../../data/local/continueWatchingPreferences.js";
 import { PlayerSettingsStore } from "../../data/local/playerSettingsStore.js";
 import { TmdbSettingsStore } from "../../data/local/tmdbSettingsStore.js";
 import { MdbListSettingsStore } from "../../data/local/mdbListSettingsStore.js";
@@ -13,7 +15,6 @@ import {
 } from "../../data/local/traktSettingsStore.js";
 import { AnimeSkipSettingsStore } from "../../data/local/animeSkipSettingsStore.js";
 import { StreamBadgeSettingsStore } from "../../data/local/streamBadgeSettingsStore.js";
-import { TorrentSettingsStore } from "../../data/local/torrentSettingsStore.js";
 import {
   ANDROID_DEBRID_STREAM_DESCRIPTION_TEMPLATE,
   DebridSettingsStore,
@@ -35,8 +36,15 @@ const PULL_RPC = "sync_pull_profile_settings_blob";
 const PUSH_RPC = "sync_push_profile_settings_blob";
 const SETTINGS_SYNC_PLATFORM = "tv";
 const CACHE_KEY = "profileSettingsSyncCache";
-const EXPERIENCE_SETTINGS_FEATURE = "experience_settings";
-const WEB_EXPERIENCE_MODE = "ADVANCED";
+const EXCLUDED_PROFILE_KEYS = {
+  layout_settings: new Set(["search_discover_enabled"]),
+  player_settings: new Set(["audio_amplification_db", "persist_audio_amplification"]),
+  debrid_settings: new Set([
+    "stream_badges_enabled",
+    "stream_show_badges",
+    "show_stream_badges"
+  ])
+};
 
 function resolveProfileId(profileId = null) {
   const raw = Number(profileId ?? ProfileManager.getActiveProfileId() ?? 1);
@@ -84,33 +92,6 @@ function normalizeFeaturePayload(value) {
   }, {});
 }
 
-function normalizeStringArray(value) {
-  if (Array.isArray(value)) {
-    return Array.from(new Set(value.map((entry) => String(entry || "").trim()).filter(Boolean)));
-  }
-  if (typeof value === "string") {
-    return Array.from(
-      new Set(
-        value
-          .split(",")
-          .map((entry) => entry.trim())
-          .filter(Boolean)
-      )
-    );
-  }
-  return [];
-}
-
-function firstStringArrayFromRaw(raw = {}, keys = []) {
-  for (const key of keys) {
-    if (!Object.prototype.hasOwnProperty.call(raw, key)) {
-      continue;
-    }
-    return normalizeStringArray(raw[key]);
-  }
-  return null;
-}
-
 function normalizeBlob(blob = {}) {
   const features = isPlainObject(blob?.features) ? blob.features : {};
   return {
@@ -123,39 +104,6 @@ function normalizeBlob(blob = {}) {
       accumulator[normalizedFeatureName] = cloneValue(featureValue) || {};
       return accumulator;
     }, {})
-  };
-}
-
-function readEncodedPreferenceValue(featurePayload = {}, key = "") {
-  const entry = featurePayload?.[key];
-  return isEncodedPreferenceValue(entry) ? entry.value : entry;
-}
-
-function hasValidExperienceMode(blob = {}) {
-  const mode = String(
-    readEncodedPreferenceValue(blob?.features?.[EXPERIENCE_SETTINGS_FEATURE], "mode") || ""
-  ).toUpperCase();
-  return mode === "ESSENTIAL" || mode === "ADVANCED";
-}
-
-function ensureExperienceSettingsContract(blob = {}) {
-  const normalized = normalizeBlob(blob);
-  if (hasValidExperienceMode(normalized)) {
-    return normalized;
-  }
-  return {
-    ...normalized,
-    features: {
-      ...normalized.features,
-      [EXPERIENCE_SETTINGS_FEATURE]: {
-        ...(normalized.features[EXPERIENCE_SETTINGS_FEATURE] || {}),
-        mode: { type: "string", value: WEB_EXPERIENCE_MODE }
-      },
-      layout_settings: {
-        ...(normalized.features.layout_settings || {}),
-        has_chosen_layout: { type: "boolean", value: true }
-      }
-    }
   };
 }
 
@@ -214,10 +162,6 @@ function encodeFeaturePayload(featurePayload = {}, featureName = "") {
     }
     return accumulator;
   }, {});
-}
-
-function hasObjectEntries(value) {
-  return isPlainObject(value) && Object.keys(value).length > 0;
 }
 
 function readCache() {
@@ -692,14 +636,13 @@ const FEATURE_ADAPTERS = {
       const layout = LayoutPreferences.getForProfile(profileId);
       return {
         selected_layout: normalizeHomeLayoutForAndroid(layout.homeLayout),
-        has_chosen_layout: true,
+        has_chosen_layout: Boolean(layout.hasChosenLayout),
         sidebar_collapsed_by_default: Boolean(layout.collapseSidebar),
         modern_sidebar_enabled: Boolean(layout.modernSidebar),
         modern_sidebar_blur_enabled: Boolean(layout.modernSidebarBlur),
         modern_landscape_posters_enabled: Boolean(layout.modernLandscapePostersEnabled),
         modern_hero_full_screen_backdrop: Boolean(layout.modernHeroFullScreenBackdropEnabled),
         hero_section_enabled: Boolean(layout.heroSectionEnabled),
-        search_discover_enabled: Boolean(layout.searchDiscoverEnabled),
         discover_location: normalizeDiscoverLocationForAndroid(layout.discoverLocation),
         hero_catalog_keys: Array.isArray(layout.heroCatalogKeys) ? layout.heroCatalogKeys : [],
         poster_labels_enabled: Boolean(layout.posterLabelsEnabled),
@@ -796,9 +739,7 @@ const FEATURE_ADAPTERS = {
       }
       if (stringOrNull(raw.discover_location)) {
         projected.discover_location = String(raw.discover_location).trim().toUpperCase();
-        projected.search_discover_enabled = String(raw.discover_location).toUpperCase() !== "OFF";
       } else if (booleanOrNull(raw.search_discover_enabled) != null) {
-        projected.search_discover_enabled = Boolean(raw.search_discover_enabled);
         projected.discover_location = normalizeDiscoverLocationForAndroid(
           raw.search_discover_enabled === false ? "OFF" : "IN_SEARCH"
         );
@@ -842,6 +783,9 @@ const FEATURE_ADAPTERS = {
       const partial = {};
       if (stringOrNull(raw.selected_layout)) {
         partial.homeLayout = normalizeHomeLayoutForWeb(raw.selected_layout);
+      }
+      if (booleanOrNull(raw.has_chosen_layout) != null) {
+        partial.hasChosenLayout = Boolean(raw.has_chosen_layout);
       }
       if (booleanOrNull(raw.sidebar_collapsed_by_default) != null) {
         partial.collapseSidebar = Boolean(raw.sidebar_collapsed_by_default);
@@ -960,64 +904,37 @@ const FEATURE_ADAPTERS = {
       return true;
     }
   },
-  home_catalog_settings: {
+  experience_settings: {
     export(profileId) {
-      const prefs = HomeCatalogStore.getForProfile(profileId);
+      const settings = ExperienceModeStore.getForProfile(profileId);
       return {
-        catalog_order_keys: prefs.order,
-        disabled_catalog_keys: prefs.disabled
+        ...(settings.mode ? { mode: settings.mode } : {}),
+        addon_setup_skipped: Boolean(settings.addonSetupSkipped)
       };
     },
     project(rawFeature = {}) {
       const raw = normalizeFeaturePayload(rawFeature);
-      const projected = {};
-      const order = firstStringArrayFromRaw(raw, [
-        "catalog_order_keys",
-        "home_catalog_order",
-        "catalog_order",
-        "order"
-      ]);
-      const disabled = firstStringArrayFromRaw(raw, [
-        "disabled_catalog_keys",
-        "hidden_catalog_keys",
-        "catalog_disabled_keys",
-        "home_catalog_disabled",
-        "disabled"
-      ]);
-      if (order) {
-        projected.catalog_order_keys = order;
-      }
-      if (disabled) {
-        projected.disabled_catalog_keys = disabled;
-      }
-      return projected;
+      const mode = String(raw.mode || "").trim().toUpperCase();
+      return {
+        ...(mode === "ESSENTIAL" || mode === "ADVANCED" ? { mode } : {}),
+        ...(booleanOrNull(raw.addon_setup_skipped) != null
+          ? { addon_setup_skipped: Boolean(raw.addon_setup_skipped) }
+          : {})
+      };
     },
     import(profileId, rawFeature = {}) {
-      const raw = normalizeFeaturePayload(rawFeature);
-      const partial = {};
-      const order = firstStringArrayFromRaw(raw, [
-        "catalog_order_keys",
-        "home_catalog_order",
-        "catalog_order",
-        "order"
-      ]);
-      const disabled = firstStringArrayFromRaw(raw, [
-        "disabled_catalog_keys",
-        "hidden_catalog_keys",
-        "catalog_disabled_keys",
-        "home_catalog_disabled",
-        "disabled"
-      ]);
-      if (order) {
-        partial.order = order;
-      }
-      if (disabled) {
-        partial.disabled = disabled;
-      }
-      if (!Object.keys(partial).length) {
-        return false;
-      }
-      HomeCatalogStore.setForProfile(profileId, partial, { silentSync: true });
+      const projected = this.project(rawFeature);
+      if (!Object.keys(projected).length) return false;
+      ExperienceModeStore.setForProfile(
+        profileId,
+        {
+          ...(projected.mode ? { mode: projected.mode } : {}),
+          ...(Object.prototype.hasOwnProperty.call(projected, "addon_setup_skipped")
+            ? { addonSetupSkipped: projected.addon_setup_skipped }
+            : {})
+        },
+        { silentSync: true }
+      );
       return true;
     }
   },
@@ -1057,11 +974,6 @@ const FEATURE_ADAPTERS = {
         ),
         auto_skip_segment_types: Array.isArray(settings.autoSkipSegmentTypes) ? settings.autoSkipSegmentTypes : [],
         addon_subtitle_startup_mode: String(settings.addonSubtitleStartupMode || "ALL_SUBTITLES"),
-        audio_amplification_db: Math.max(
-          0,
-          Math.trunc(Number(settings.audioAmplificationDb ?? 0) || 0)
-        ),
-        persist_audio_amplification: Boolean(settings.persistAudioAmplification),
         skip_intro_enabled: Boolean(settings.skipIntroEnabled),
         stream_auto_play_next_episode_enabled: Boolean(settings.autoplayNextEpisode),
         stream_auto_play_prefer_bingegroup_next_episode: Boolean(
@@ -1139,7 +1051,6 @@ const FEATURE_ADAPTERS = {
         "subtitle_bold",
         "subtitle_use_forced_subtitles",
         "subtitle_outline_enabled",
-        "persist_audio_amplification",
         "skip_intro_enabled",
         "stream_auto_play_next_episode_enabled",
         "stream_auto_play_prefer_bingegroup_next_episode",
@@ -1156,8 +1067,7 @@ const FEATURE_ADAPTERS = {
         "subtitle_size",
         "subtitle_text_color",
         "subtitle_background_color",
-        "subtitle_outline_color",
-        "audio_amplification_db"
+        "subtitle_outline_color"
       ].forEach((key) => {
         if (numberOrNull(raw[key]) != null) {
           projected[key] = Math.trunc(Number(raw[key]));
@@ -1267,7 +1177,9 @@ const FEATURE_ADAPTERS = {
       }
       if (subtitleLanguage) {
         partial.subtitleLanguage = subtitleLanguage;
-        partial.subtitlesEnabled = subtitleLanguage !== "off";
+        // Android's "None" still permits forced-only selection when that flag
+        // is enabled, so the removed Web-only master switch must stay enabled.
+        partial.subtitlesEnabled = true;
         subtitleStyle.preferredLanguage = subtitleLanguage;
       }
       if (secondarySubtitleLanguage) {
@@ -1304,12 +1216,6 @@ const FEATURE_ADAPTERS = {
       }
       if (numberOrNull(raw.subtitle_outline_color) != null) {
         subtitleStyle.outlineColor = androidColorIntToHex(raw.subtitle_outline_color, "#000000");
-      }
-      if (numberOrNull(raw.audio_amplification_db) != null) {
-        partial.audioAmplificationDb = Math.max(0, Math.trunc(Number(raw.audio_amplification_db)));
-      }
-      if (booleanOrNull(raw.persist_audio_amplification) != null) {
-        partial.persistAudioAmplification = Boolean(raw.persist_audio_amplification);
       }
       if (booleanOrNull(raw.skip_intro_enabled) != null) {
         partial.skipIntroEnabled = Boolean(raw.skip_intro_enabled);
@@ -1629,6 +1535,7 @@ const FEATURE_ADAPTERS = {
         continue_watching_days_cap: normalizeTraktContinueWatchingDaysCap(
           settings.continueWatchingDaysCap
         ),
+        dismissed_next_up_keys: ContinueWatchingPreferences.getDismissedNextUpKeys(profileId),
         show_meta_comments: settings.showMetaComments !== false,
         watch_progress_source: normalizeTraktWatchProgressSourceForAndroid(
           settings.watchProgressSource
@@ -1645,6 +1552,9 @@ const FEATURE_ADAPTERS = {
         projected.continue_watching_days_cap = normalizeTraktContinueWatchingDaysCap(
           raw.continue_watching_days_cap
         );
+      }
+      if (Array.isArray(raw.dismissed_next_up_keys)) {
+        projected.dismissed_next_up_keys = raw.dismissed_next_up_keys.map(String).filter(Boolean);
       }
       if (booleanOrNull(raw.show_meta_comments) != null) {
         projected.show_meta_comments = Boolean(raw.show_meta_comments);
@@ -1673,6 +1583,13 @@ const FEATURE_ADAPTERS = {
       if (numberOrNull(raw.continue_watching_days_cap) != null) {
         partial.continueWatchingDaysCap = normalizeTraktContinueWatchingDaysCap(
           raw.continue_watching_days_cap
+        );
+      }
+      if (Array.isArray(raw.dismissed_next_up_keys)) {
+        ContinueWatchingPreferences.replaceDismissedNextUpKeys(
+          raw.dismissed_next_up_keys,
+          profileId,
+          { silentSync: true }
         );
       }
       if (booleanOrNull(raw.show_meta_comments) != null) {
@@ -1790,42 +1707,15 @@ const FEATURE_ADAPTERS = {
       return true;
     }
   },
-  torrent_settings: {
+  track_preference: {
     export(profileId) {
-      const settings = TorrentSettingsStore.getForProfile(profileId);
-      return {
-        p2p_enabled: Boolean(settings.p2pEnabled),
-        enable_upload: Boolean(settings.enableUpload),
-        hide_torrent_stats: Boolean(settings.hideTorrentStats)
-      };
+      return TrackPreferencesStore.exportFeaturePayload(profileId);
     },
     project(rawFeature = {}) {
-      const raw = normalizeFeaturePayload(rawFeature);
-      const projected = {};
-      ["p2p_enabled", "enable_upload", "hide_torrent_stats"].forEach((key) => {
-        if (booleanOrNull(raw[key]) != null) {
-          projected[key] = Boolean(raw[key]);
-        }
-      });
-      return projected;
+      return normalizeFeaturePayload(rawFeature);
     },
     import(profileId, rawFeature = {}) {
-      const raw = normalizeFeaturePayload(rawFeature);
-      const partial = {};
-      if (booleanOrNull(raw.p2p_enabled) != null) {
-        partial.p2pEnabled = Boolean(raw.p2p_enabled);
-      }
-      if (booleanOrNull(raw.enable_upload) != null) {
-        partial.enableUpload = Boolean(raw.enable_upload);
-      }
-      if (booleanOrNull(raw.hide_torrent_stats) != null) {
-        partial.hideTorrentStats = Boolean(raw.hide_torrent_stats);
-      }
-      if (!Object.keys(partial).length) {
-        return false;
-      }
-      TorrentSettingsStore.setForProfile(profileId, partial, { silentSync: true });
-      return true;
+      return TrackPreferencesStore.importFeaturePayload(normalizeFeaturePayload(rawFeature), profileId);
     }
   },
   debrid_settings: {
@@ -1851,7 +1741,6 @@ const FEATURE_ADAPTERS = {
         stream_dolby_vision_filter: String(settings.streamDolbyVisionFilter || "ANY").toUpperCase(),
         stream_hdr_filter: String(settings.streamHdrFilter || "ANY").toUpperCase(),
         stream_codec_filter: String(settings.streamCodecFilter || "ANY").toUpperCase(),
-        stream_badges_enabled: settings.streamBadgesEnabled !== false,
         stream_preferences: JSON.stringify(
           normalizeDebridStreamPreferences(settings.streamPreferences)
         ),
@@ -1869,14 +1758,6 @@ const FEATURE_ADAPTERS = {
           projected[key] = Boolean(raw[key]);
         }
       });
-      const streamBadgesEnabled = booleanFromAnyKey(raw, [
-        "stream_badges_enabled",
-        "stream_show_badges",
-        "show_stream_badges"
-      ]);
-      if (streamBadgesEnabled != null) {
-        projected.stream_badges_enabled = streamBadgesEnabled;
-      }
       [
         "torbox_api_key",
         "premiumize_api_key",
@@ -1967,14 +1848,6 @@ const FEATURE_ADAPTERS = {
           .trim()
           .toUpperCase();
       }
-      const streamBadgesEnabled = booleanFromAnyKey(raw, [
-        "stream_badges_enabled",
-        "stream_show_badges",
-        "show_stream_badges"
-      ]);
-      if (streamBadgesEnabled != null) {
-        partial.streamBadgesEnabled = streamBadgesEnabled;
-      }
       if (raw.stream_preferences != null) {
         partial.streamPreferences = normalizeDebridStreamPreferences(
           String(raw.stream_preferences || "").trim()
@@ -2026,10 +1899,10 @@ function buildOutgoingBlob(profileId, baseBlob = null) {
   const normalizedBase = normalizeBlob(baseBlob || {});
   const nextFeatures = Object.entries(normalizedBase.features).reduce(
     (accumulator, [featureName, featurePayload]) => {
+      if (!SUPPORTED_FEATURE_NAMES.includes(featureName)) return accumulator;
       const encodedPayload = encodeFeaturePayload(featurePayload, featureName);
-      if (hasObjectEntries(encodedPayload) || SUPPORTED_FEATURE_NAMES.includes(featureName)) {
-        accumulator[featureName] = encodedPayload;
-      }
+      EXCLUDED_PROFILE_KEYS[featureName]?.forEach((key) => delete encodedPayload[key]);
+      accumulator[featureName] = encodedPayload;
       return accumulator;
     },
     {}
@@ -2040,9 +1913,10 @@ function buildOutgoingBlob(profileId, baseBlob = null) {
       ...(nextFeatures[featureName] || {}),
       ...encodeFeaturePayload(FEATURE_ADAPTERS[featureName].export(profileId), featureName)
     };
+    EXCLUDED_PROFILE_KEYS[featureName]?.forEach((key) => delete nextFeatures[featureName][key]);
   });
 
-  return ensureExperienceSettingsContract({
+  return normalizeBlob({
     version: 1,
     features: nextFeatures
   });
@@ -2098,21 +1972,6 @@ export const ProfileSettingsSyncService = {
       const blob = await pullRemoteBlob(resolvedProfileId);
       if (!blob) {
         return false;
-      }
-
-      if (!hasValidExperienceMode(blob)) {
-        const repairedBlob = ensureExperienceSettingsContract(blob);
-        await SupabaseApi.rpc(
-          PUSH_RPC,
-          {
-            p_profile_id: resolvedProfileId,
-            p_settings_json: repairedBlob,
-            p_platform: SETTINGS_SYNC_PLATFORM
-          },
-          true
-        );
-        setCachedBlob(resolvedProfileId, repairedBlob);
-        blob.features = repairedBlob.features;
       }
 
       setCachedBlob(resolvedProfileId, blob);

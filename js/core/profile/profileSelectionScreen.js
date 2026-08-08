@@ -8,6 +8,7 @@ import { ThemeManager } from "../../ui/theme/themeManager.js";
 import { I18n } from "../../i18n/index.js";
 import { NuvioDialog } from "../../ui/components/nuvioDialog.js";
 import { detailWatchedEnrichmentService } from "../../data/repository/detailWatchedEnrichmentService.js";
+import { resolveExperienceRoute } from "./experienceModeRouting.js";
 import { Platform } from "../../platform/index.js";
 
 const PINNED_AVATAR_CATEGORIES = ["anime", "animation", "tv", "movie", "gaming"];
@@ -2101,7 +2102,12 @@ export const ProfileSelectionScreen = {
       await I18n.init();
       ThemeManager.apply();
       I18n.apply();
-      await Router.navigate("home", { forceReload: true });
+      const experienceRoute = await resolveExperienceRoute(profileId);
+      await Router.navigate(
+        experienceRoute,
+        experienceRoute === "home" ? { forceReload: true } : {},
+        experienceRoute === "home" ? {} : { replaceHistory: true, skipStackPush: true }
+      );
       void StartupSyncService.requestSyncNow().catch((error) => {
         console.warn("Profile background sync failed", error);
       });

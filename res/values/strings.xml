@@ -461,10 +461,6 @@
     <string name="advanced_clear_cw_cache_done">Cache cleared</string>
     <string name="advanced_remember_last_profile">Remember Last Profile</string>
     <string name="advanced_remember_last_profile_subtitle">Remember last selected profile at startup</string>
-    <string name="advanced_strict_dpad_grid">Strict D-pad Grid Navigation</string>
-    <string name="advanced_strict_dpad_grid_subtitle">Keep directional focus movement aligned to rows and columns when possible.</string>
-    <string name="advanced_rotated_dpad">Rotated D-pad Mapping</string>
-    <string name="advanced_rotated_dpad_subtitle">Swap directional key mapping for simulators or remotes that report rotated arrows.</string>
     <string name="settings_debug">Debug</string>
     <string name="settings_debug_subtitle">Developer tools and feature flags</string>
     <string name="settings_plugins_section_subtitle">Manage repositories, providers, and plugin states</string>
@@ -2780,4 +2776,9 @@
     <string name="debrid_selection_count_value">{{count}} selected</string>
     <string name="trakt_manual_code_description">A manual activation code will be shown here. No QR code is required.</string>
     <string name="licenses_attributions_simkl_body">Nuvio connects to Simkl for account authentication, watchlists, watched history, playback progress, and scrobbling. Movie, TV, and anime tracking data is provided by Simkl. Nuvio is not affiliated with or endorsed by Simkl.</string>
+    <string name="licenses_attributions_simkl_title">Simkl</string>
+    <string name="licenses_attributions_premiumize_title">Premiumize</string>
+    <string name="licenses_attributions_premiumize_body">Nuvio connects to Premiumize for account authentication, cloud library access, cache checks, and cloud playback features. Nuvio is not affiliated with or endorsed by Premiumize.</string>
+    <string name="licenses_attributions_torbox_title">TorBox</string>
+    <string name="licenses_attributions_torbox_body">Nuvio connects to TorBox for account authentication, cloud library access, cache checks, and cloud playback features. Nuvio is not affiliated with or endorsed by TorBox.</string>
 </resources>

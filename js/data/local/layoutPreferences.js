@@ -4,6 +4,7 @@ import { LocalStore } from "../../core/storage/localStore.js";
 const KEY = "layoutPreferences";
 
 const DEFAULTS = {
+  hasChosenLayout: false,
   homeLayout: "modern",
   continueWatchingCardStyle: "card",
   heroSectionEnabled: true,
@@ -71,6 +72,10 @@ function normalizeLayoutPreferences(value = {}) {
 
   return {
     ...merged,
+    hasChosenLayout:
+      typeof value?.hasChosenLayout === "boolean"
+        ? value.hasChosenLayout
+        : Object.keys(value || {}).length > 0,
     continueWatchingCardStyle: ["card", "wide", "poster"].includes(continueWatchingCardStyle)
       ? continueWatchingCardStyle
       : "card",

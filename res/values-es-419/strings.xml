@@ -2434,4 +2434,11 @@
     <string name="playback_net_chunk_size">Tamaño de fragmento</string>
     <string name="playback_net_chunk_size_sub">Tamaño de cada fragmento de descarga por conexión. Los fragmentos más grandes reducen la sobrecarga, pero utilizan más memoria.</string>
     <string name="playback_estimated_memory_usage">Uso estimado de memoria: %1$d / %2$d MB</string>
+    <string name="licenses_attributions_simkl_title">Simkl</string>
+    <string name="licenses_attributions_simkl_body">Nuvio se conecta con Simkl para la autenticación de la cuenta, las listas de seguimiento, el historial de visualización, el progreso de reproducción y el scrobbling. Los datos de seguimiento de películas, series y anime son proporcionados por Simkl. Nuvio no está afiliado ni respaldado por Simkl.</string>
+    <string name="licenses_attributions_premiumize_title">Premiumize</string>
+    <string name="licenses_attributions_premiumize_body">Nuvio se conecta a Premiumize para autenticación de cuenta, acceso a la biblioteca en la nube, verificación de caché y funciones de reproducción en la nube. Nuvio no está afiliado ni respaldado por Premiumize.</string>
+    <string name="licenses_attributions_torbox_title">TorBox</string>
+    <string name="licenses_attributions_torbox_body">Nuvio se conecta a TorBox para autenticación de cuenta, acceso a la biblioteca en la nube, verificación de caché y funciones de reproducción en la nube. Nuvio no está afiliado ni respaldado por TorBox.</string>
+    <string name="update_error_check_failed">Error al buscar actualizaciones</string>
 </resources>

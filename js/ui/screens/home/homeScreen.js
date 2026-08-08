@@ -5420,7 +5420,7 @@ export const HomeScreen = {
       if (buildHeroIdentity(currentHero) !== scheduledHeroIdentity) {
         return;
       }
-      requestAnimationFrame(async () => {
+      requestAnimationFrame(() => {
         if (Number(this.heroFocusToken || 0) !== focusToken) {
           return;
         }
@@ -5432,34 +5432,22 @@ export const HomeScreen = {
         if (!latestHero || buildHeroIdentity(latestHero) !== scheduledHeroIdentity) {
           return;
         }
-        if (shouldEnrichModernHero(latestHero)) {
-          void this.enrichCurrentHeroAsync(latestHero, focusToken, { deferCommit: true });
-          return;
-        }
-        await preloadModernHeroAssets(latestHero);
-        if (Number(this.heroFocusToken || 0) !== focusToken) {
-          return;
-        }
-        const settledFocusedNode = this.getCurrentFocusedNode();
-        if (
-          settledFocusedNode !== node ||
-          !node?.isConnected ||
-          !node.classList.contains("focused")
-        ) {
-          return;
-        }
-        const settledHero = this.getNodeHeroSource(node);
-        if (!settledHero || buildHeroIdentity(settledHero) !== scheduledHeroIdentity) {
-          return;
-        }
-        this.heroItem = settledHero;
+        // Keep the hero copy synchronized with the settled focus immediately.
+        // Backdrop/logo swaps already preload and guard their own async work, so
+        // waiting for those assets here leaves the previous movie visible on
+        // slower TV engines. Metadata enrichment can safely refine this item
+        // afterward while its focus token is still current.
+        this.heroItem = latestHero;
         const matchedIndex = this.heroCandidates.findIndex(
-          (item) => String(item?.id || "") === String(settledHero.id || "")
+          (item) => String(item?.id || "") === String(latestHero.id || "")
         );
         if (matchedIndex >= 0) {
           this.heroIndex = matchedIndex;
         }
         this.applyHeroToDom();
+        if (shouldEnrichModernHero(latestHero)) {
+          void this.enrichCurrentHeroAsync(latestHero, focusToken, { deferCommit: true });
+        }
       });
     }, delay);
   },

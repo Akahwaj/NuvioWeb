@@ -121,6 +121,7 @@ export const PlayerController = {
   avplayDurationMs: 0,
   avplayTrackSyncAt: 0,
   lastPlaybackErrorCode: 0,
+  lastHlsErrorDiagnostic: null,
   currentPlaybackUrl: "",
   currentPlaybackHeaders: {},
   currentPlaybackMediaSourceType: null,
@@ -1346,9 +1347,10 @@ export const PlayerController = {
     }
     const mode = normalizeAvPlaySubtitleRenderMode(renderMode);
     try {
-      // Re-arm AVPlay's subtitle decoder before selecting. Selecting the same
-      // TEXT track is otherwise a no-op after subtitles were disabled.
-      avplay.setSilentSubtitle?.(mode === "native");
+      // Keep Samsung's native renderer enabled while switching internal TEXT
+      // tracks. HTML mode stays silent so subtitle callbacks can be rendered
+      // by the app overlay instead.
+      avplay.setSilentSubtitle?.(mode === "html");
     } catch (_) {
       // Track selection can still succeed when this toggle is unavailable.
     }
@@ -2271,7 +2273,10 @@ export const PlayerController = {
 
   configureAvPlayBuffering() {
     const avplay = this.getAvPlay();
-    if (!avplay) {
+    if (!avplay || Platform.isTizen()) {
+      // Match Stremio's Tizen AVPlay path: leave buffering thresholds and the
+      // timeout to Samsung's model-specific defaults. Small fixed buffers can
+      // make high-bitrate REMUX playback repeatedly drain and resume.
       return;
     }
 
@@ -2619,6 +2624,98 @@ export const PlayerController = {
 
   getLastPlaybackErrorCode() {
     return Number(this.lastPlaybackErrorCode || 0);
+  },
+
+  sanitizePlaybackDiagnosticText(value, maxLength = 240) {
+    const text = String(value ?? "")
+      .replace(/https?:\/\/[^\s"'<>]+/gi, "[redacted-url]")
+      .replace(
+        /((?:clear_?key|clearkey|api_password|authorization|cookie|token)=)[^&\s]+/gi,
+        "$1[redacted]"
+      )
+      .replace(
+        /((?:clear_?key|clearkey|api_password|authorization|cookie|token)\s*:\s*)(?:"[^"]*"|'[^']*'|[^,;\s}]+)/gi,
+        "$1[redacted]"
+      )
+      .trim();
+    if (!text) {
+      return "";
+    }
+    return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+  },
+
+  captureHlsErrorDiagnostic(data = {}) {
+    const video = this.video || null;
+    const buffered = [];
+    try {
+      for (let index = 0; index < Number(video?.buffered?.length || 0); index += 1) {
+        buffered.push(
+          `${Number(video.buffered.start(index)).toFixed(3)}-${Number(
+            video.buffered.end(index)
+          ).toFixed(3)}`
+        );
+      }
+    } catch (_) {
+      // Buffered ranges are best-effort diagnostics only.
+    }
+
+    const fragment = data?.frag || null;
+    const responseCode = Number(data?.response?.code || data?.networkDetails?.status || 0);
+    const mediaErrorCode = Number(video?.error?.code || 0);
+    const diagnostic = {
+      fatal: Boolean(data?.fatal),
+      type: this.sanitizePlaybackDiagnosticText(data?.type),
+      details: this.sanitizePlaybackDiagnosticText(data?.details),
+      reason: this.sanitizePlaybackDiagnosticText(data?.reason),
+      error: this.sanitizePlaybackDiagnosticText(data?.error?.message || data?.error?.name),
+      sourceBuffer: this.sanitizePlaybackDiagnosticText(
+        data?.sourceBufferName || data?.parent || fragment?.type
+      ),
+      responseCode: responseCode || null,
+      level: Number.isFinite(Number(data?.level ?? fragment?.level))
+        ? Number(data?.level ?? fragment?.level)
+        : null,
+      fragmentSn:
+        fragment?.sn == null ? null : this.sanitizePlaybackDiagnosticText(fragment.sn, 80),
+      fragmentCc: Number.isFinite(Number(fragment?.cc)) ? Number(fragment.cc) : null,
+      readyState: Number(video?.readyState || 0),
+      networkState: Number(video?.networkState || 0),
+      currentTime: Number.isFinite(Number(video?.currentTime))
+        ? Number(Number(video.currentTime).toFixed(3))
+        : null,
+      buffered: buffered.join(", ") || "none",
+      mediaErrorCode: mediaErrorCode || null,
+      mediaError: this.sanitizePlaybackDiagnosticText(video?.error?.message)
+    };
+    this.lastHlsErrorDiagnostic = diagnostic;
+    console.warn("[Nuvio playback] hls.js error", diagnostic);
+    return diagnostic;
+  },
+
+  getLastHlsErrorDetail() {
+    const diagnostic = this.lastHlsErrorDiagnostic;
+    if (!diagnostic) {
+      return "";
+    }
+    const fields = [
+      diagnostic.type,
+      diagnostic.details,
+      diagnostic.reason,
+      diagnostic.error,
+      diagnostic.sourceBuffer ? `buffer=${diagnostic.sourceBuffer}` : "",
+      diagnostic.responseCode ? `HTTP ${diagnostic.responseCode}` : "",
+      diagnostic.level == null ? "" : `level=${diagnostic.level}`,
+      diagnostic.fragmentSn == null ? "" : `sn=${diagnostic.fragmentSn}`,
+      diagnostic.fragmentCc == null ? "" : `cc=${diagnostic.fragmentCc}`,
+      `fatal=${diagnostic.fatal}`,
+      `readyState=${diagnostic.readyState}`,
+      `networkState=${diagnostic.networkState}`,
+      diagnostic.currentTime == null ? "" : `time=${diagnostic.currentTime}`,
+      `buffered=${diagnostic.buffered}`,
+      diagnostic.mediaErrorCode ? `mediaCode=${diagnostic.mediaErrorCode}` : "",
+      diagnostic.mediaError
+    ].filter(Boolean);
+    return fields.join("; ");
   },
 
   forceAvPlayFallbackForCurrentSource(reason = "fallback") {
@@ -3055,6 +3152,7 @@ export const PlayerController = {
       if (!this.isPlaybackRequestActive(playToken, url)) {
         return;
       }
+      this.captureHlsErrorDiagnostic(data);
       if (!data?.fatal) {
         return;
       }
@@ -3472,6 +3570,13 @@ export const PlayerController = {
     const targetSpeed = this.normalizePlaybackRate(speed);
     if (!this.isSupportedAvPlayPlaybackRate(targetSpeed)) {
       return false;
+    }
+    if (targetSpeed === 1) {
+      // Normal speed is AVPlay's native state. Tizen exposes no alternative
+      // rate in this app, so avoid repeatedly re-entering Samsung trick-play
+      // after play, buffering completion, resume, and seek.
+      this.appliedAvPlayPlaybackRate = 1;
+      return true;
     }
     const avplay = this.getAvPlay();
     if (!avplay || typeof avplay.setSpeed !== "function") {
@@ -4119,6 +4224,7 @@ export const PlayerController = {
     this.currentPlaybackHeaders = { ...(requestHeaders || {}) };
     this.currentPlaybackMediaSourceType = this.resolveRuntimeSourceType(mediaSourceType);
     this.lastPlaybackErrorCode = 0;
+    this.lastHlsErrorDiagnostic = null;
 
     const sourceType =
       this.currentPlaybackMediaSourceType ||

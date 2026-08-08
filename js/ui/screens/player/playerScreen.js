@@ -93,6 +93,7 @@ const NEXT_EPISODE_SOURCE_RESOLVE_TIMEOUT_MS = 45000;
 const STARTUP_AUDIO_PREFERENCE_RETRY_WINDOW_MS = 6000;
 const STARTUP_AUDIO_PREFERENCE_RETRY_INTERVAL_MS = 250;
 const WEBOS_REMOTE_MKV_AUDIO_GATE_MAX_WAIT_MS = 30000;
+const WEBOS_NATIVE_STARTUP_LOADING_EXTENSION_MS = 120000;
 const EPISODE_PANEL_TRANSITION_MS = 220;
 const activeEngineFsPlaybackClaims = new Map();
 const deferredEngineFsRemovalTimers = new Map();
@@ -2487,6 +2488,7 @@ export const PlayerScreen = {
     this.engineFsStartupRetryTimer = null;
     this.engineFsStartupErrorRetries = 0;
     this.engineFsStallExtensions = 0;
+    this.webOsNativeStartupLoadingExtended = false;
     this.lastEngineFsStallStats = null;
     this.lastEngineFsStartupErrorStats = null;
     this.engineFsKeepAliveHandle = null;
@@ -5516,8 +5518,20 @@ export const PlayerScreen = {
     const engineFs = candidate?.engineFs || raw?.engineFs || this.currentEngineFsStream || null;
     const mediaError = video?.error || null;
     const eventErrorDetail = this.getPlaybackEventErrorDetail(eventDetail);
+    const rememberedHlsError =
+      typeof PlayerController.getLastHlsErrorDetail === "function"
+        ? PlayerController.getLastHlsErrorDetail()
+        : "";
     const httpStatus = extractPlaybackHttpStatus(
-      [detail, eventErrorDetail, error?.message, error?.name, error?.errorText, error?.status]
+      [
+        detail,
+        eventErrorDetail,
+        rememberedHlsError,
+        error?.message,
+        error?.name,
+        error?.errorText,
+        error?.status
+      ]
         .filter(Boolean)
         .join(" ")
     );
@@ -5564,7 +5578,8 @@ export const PlayerScreen = {
     pushPlaybackDiagnosticLine(
       lines,
       "HLS error",
-      eventDetail?.hlsErrorDetails || eventDetail?.hlsErrorType
+      eventDetail?.hlsErrorDetails || eventDetail?.hlsErrorType || rememberedHlsError,
+      420
     );
     pushPlaybackDiagnosticLine(lines, "DASH error", eventDetail?.dashError);
     pushPlaybackDiagnosticLine(lines, "AVPlay error", eventDetail?.avplayError);
@@ -8330,7 +8345,20 @@ export const PlayerScreen = {
 
     const onPlaying = () => {
       if (this.isStartupErrorVisible()) {
-        return;
+        if (!Environment.isWebOS()) {
+          return;
+        }
+        console.info("webOS playback recovered after the startup stall guard", {
+          url: this.activePlaybackUrl,
+          engine: PlayerController.playbackEngine
+        });
+        this.clearStartupError();
+        this.failedPlaybackUrls?.delete?.(String(this.activePlaybackUrl || "").trim());
+        const currentStreamId = String(this.getCurrentStreamCandidate()?.id || "").trim();
+        if (currentStreamId) {
+          this.failedPlaybackStreamIds?.delete?.(currentStreamId);
+        }
+        this.loadingVisible = true;
       }
       if (this.seekLoading) {
         this.seekLoading = false;
@@ -10413,6 +10441,7 @@ export const PlayerScreen = {
     }
 
     this.hasPresentedPlaybackFrame = false;
+    this.webOsNativeStartupLoadingExtended = false;
     this.startupPlaybackBaselineSeconds = null;
     this.startupPlaybackHasAdvanced = false;
     this.bufferingSpinnerBaselineSeconds = null;
@@ -11192,6 +11221,42 @@ export const PlayerScreen = {
         }
       }
 
+      const startupMediaErrorCode = Number(PlayerController.getLastPlaybackErrorCode?.() || 0);
+      const networkState = Number(PlayerController.video?.networkState ?? 0);
+      if (startup) {
+        const hlsError =
+          typeof PlayerController.getLastHlsErrorDetail === "function"
+            ? PlayerController.getLastHlsErrorDetail()
+            : "";
+        console.warn("[Nuvio playback] startup stall", {
+          engine: String(PlayerController.playbackEngine || "unknown"),
+          readyState,
+          networkState,
+          mediaErrorCode: startupMediaErrorCode || null,
+          hlsError: hlsError || null
+        });
+      }
+      if (
+        startup &&
+        Environment.isWebOS() &&
+        !this.currentEngineFsStream &&
+        String(PlayerController.playbackEngine || "") === "native-file" &&
+        startupMediaErrorCode === 0 &&
+        readyState === 0 &&
+        networkState === 2 &&
+        !this.webOsNativeStartupLoadingExtended
+      ) {
+        this.webOsNativeStartupLoadingExtended = true;
+        console.info("webOS native playback is still loading; extending the startup stall guard", {
+          url: this.activePlaybackUrl,
+          timeoutMs: WEBOS_NATIVE_STARTUP_LOADING_EXTENSION_MS
+        });
+        this.schedulePlaybackStallGuard({
+          timeoutMs: WEBOS_NATIVE_STARTUP_LOADING_EXTENSION_MS
+        });
+        return;
+      }
+
       const targetEngine =
         typeof PlayerController.getAlternativePlaybackEngine === "function"
           ? PlayerController.getAlternativePlaybackEngine(this.activePlaybackUrl)
@@ -11213,7 +11278,7 @@ export const PlayerScreen = {
       this.releaseStartupAudioGate({ resume: false });
       if (startup) {
         this.markPlaybackSourceFailed(this.activePlaybackUrl);
-        const mediaErrorCode = Number(PlayerController.getLastPlaybackErrorCode?.() || 0);
+        const mediaErrorCode = startupMediaErrorCode;
         const sourceCandidate =
           this.getStreamCandidateByUrl(this.activePlaybackUrl) || this.getCurrentStreamCandidate();
         const startupErrorMessage = this.getStartupErrorMessage(
@@ -13847,6 +13912,15 @@ export const PlayerScreen = {
     return Array.from(new Set(targets));
   },
 
+  getStartupAutoSelectSubtitleLanguageTargets() {
+    // Android treats a primary "None" as no normal auto-selection target;
+    // the secondary language remains useful for filtering/loading only.
+    if (this.getStartupPreferredSubtitleLanguageKey() === SUBTITLE_LANGUAGE_OFF_KEY) {
+      return [];
+    }
+    return this.getStartupPreferredSubtitleLanguageTargets();
+  },
+
   shouldUseStartupForcedSubtitles(settings = PlayerSettingsStore.get()) {
     const preferred = extractSubtitleLanguageSetting(
       settings.subtitleStyle?.preferredLanguage || settings.subtitleLanguage || "off"
@@ -13873,7 +13947,7 @@ export const PlayerScreen = {
       return null;
     }
 
-    const explicitTargets = this.getStartupPreferredSubtitleLanguageTargets();
+    const explicitTargets = this.getStartupAutoSelectSubtitleLanguageTargets();
     const selectedAudioOption = this.collectAudioOptionItems().find(
       (entry) => entry.selected && entry.languageKey
     );
@@ -13908,7 +13982,7 @@ export const PlayerScreen = {
     if (this.shouldUseStartupForcedSubtitles(settings)) {
       return "audio-forced";
     }
-    const explicitTargets = this.getStartupPreferredSubtitleLanguageTargets();
+    const explicitTargets = this.getStartupAutoSelectSubtitleLanguageTargets();
     if (explicitTargets.length) {
       return "language";
     }
@@ -14172,7 +14246,7 @@ export const PlayerScreen = {
   },
 
   findStartupPreferredSubtitleOption(
-    targets = this.getStartupPreferredSubtitleLanguageTargets(),
+    targets = this.getStartupAutoSelectSubtitleLanguageTargets(),
     mode = "language"
   ) {
     const normalizedTargets = Array.isArray(targets) ? targets.filter(Boolean) : [];
@@ -14206,19 +14280,13 @@ export const PlayerScreen = {
         if (forcedInternal) return forcedInternal;
         if (Environment.isWebOS()) {
           // Android can rely on ExoPlayer's forced flag, while webOS can omit
-          // it for embedded tracks. Keep embedded tracks ahead of addons, but
-          // only relax the regional match for an explicitly forced track or
-          // when exactly one compatible embedded track exists.
+          // it for embedded tracks. Keep embedded tracks ahead of addons and
+          // relax only the regional match for an explicitly forced track.
           const compatibleForcedInternal = options.find(
             (entry) =>
               entry.sourceType === "internal" && entry.isForced && matchTarget(entry, target)
           );
           if (compatibleForcedInternal) return compatibleForcedInternal;
-
-          const compatibleInternalTracks = options.filter(
-            (entry) => entry.sourceType === "internal" && matchTarget(entry, target)
-          );
-          if (compatibleInternalTracks.length === 1) return compatibleInternalTracks[0];
         }
         const forcedAddon = findMatch(target, { sourceType: "addon", forced: true });
         if (forcedAddon) return forcedAddon;
@@ -14278,7 +14346,7 @@ export const PlayerScreen = {
     }
 
     const configuredPreferenceMode = this.getStartupSubtitlePreferenceMode();
-    const preferredSubtitleTargets = this.getStartupPreferredSubtitleLanguageTargets();
+    const preferredSubtitleTargets = this.getStartupAutoSelectSubtitleLanguageTargets();
     if (
       configuredPreferenceMode !== "off" &&
       !this.startupAudioPreferenceApplied &&
@@ -17837,13 +17905,22 @@ export const PlayerScreen = {
         return;
       }
 
-      if (PlayerSettingsStore.get().addonSubtitleStartupMode === "PREFERRED_ONLY") {
+      const subtitleSettings = PlayerSettingsStore.get();
+      const preferredOnly =
+        subtitleSettings.addonSubtitleStartupMode === "PREFERRED_ONLY" ||
+        (subtitleSettings.addonSubtitleStartupMode === "ALL_SUBTITLES" &&
+          subtitleSettings.subtitleStyle?.showOnlyPreferredLanguages);
+      if (preferredOnly) {
         const preferredTargets = new Set(this.getStartupPreferredSubtitleLanguageTargets());
         repositorySubtitles = repositorySubtitles.filter((entry) => {
           const language = normalizeSubtitleLanguageKey(
             entry?.lang || entry?.language || entry?.languageCode || ""
           );
-          return preferredTargets.has(language) || Boolean(entry?.forced);
+          return Array.from(preferredTargets).some((target) => {
+            if (language === target) return true;
+            if (target === "pt" || target === "es") return false;
+            return language.startsWith(`${target}-`);
+          });
         });
       }
 

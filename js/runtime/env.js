@@ -9,14 +9,16 @@
       typeof existing.NUVIO_SUPABASE_ANON_KEY === "undefined"
         ? ""
         : existing.NUVIO_SUPABASE_ANON_KEY,
+    NUVIO_SUPABASE_FALLBACK_URL:
+      typeof existing.NUVIO_SUPABASE_FALLBACK_URL === "undefined"
+        ? ""
+        : existing.NUVIO_SUPABASE_FALLBACK_URL,
     TV_LOGIN_WEB_BASE_URL:
       typeof existing.TV_LOGIN_WEB_BASE_URL === "undefined" ? "" : existing.TV_LOGIN_WEB_BASE_URL,
     YOUTUBE_PROXY_URL:
       typeof existing.YOUTUBE_PROXY_URL === "undefined"
         ? "youtube-proxy.html"
         : existing.YOUTUBE_PROXY_URL,
-    PARENTAL_GUIDE_API_URL:
-      typeof existing.PARENTAL_GUIDE_API_URL === "undefined" ? "" : existing.PARENTAL_GUIDE_API_URL,
     INTRODB_API_URL:
       typeof existing.INTRODB_API_URL === "undefined"
         ? "https://api.introdb.app/"

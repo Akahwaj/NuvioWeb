@@ -9,6 +9,8 @@ const KEY = "playerSettings";
 
 const DEFAULTS = {
   autoplayNextEpisode: false,
+  // Legacy Web-only switch. Subtitle startup is controlled by the preferred
+  // language ("off" = Android "None") plus useForcedSubtitles.
   subtitlesEnabled: true,
   subtitleLanguage: "en",
   secondarySubtitleLanguage: "off",
@@ -23,6 +25,7 @@ const DEFAULTS = {
   parentalGuideEnabled: true,
   autoSkipSegmentTypes: [],
   addonSubtitleStartupMode: "ALL_SUBTITLES",
+  addonSubtitleStartupModeAutoPreferred: false,
   nextEpisodeThresholdMode: "PERCENTAGE",
   nextEpisodeThresholdPercent: 99,
   nextEpisodeThresholdMinutesBeforeEnd: 2,
@@ -220,7 +223,12 @@ export function normalizePlayerSettings(settings = {}) {
     subtitleStyle.preferredLanguage ?? persistentSettings.subtitleLanguage,
     DEFAULTS.subtitleStyle.preferredLanguage
   );
-  const subtitlesEnabled = persistentSettings.subtitlesEnabled ?? DEFAULTS.subtitlesEnabled;
+  // Migrate the removed Web-only master switch to Android's "None" language
+  // contract. Keep the legacy field enabled so forced-only mode can still run
+  // when the preferred language is off, matching Android TV.
+  if (persistentSettings.subtitlesEnabled === false) {
+    preferredLanguage = "off";
+  }
   let secondaryPreferredLanguage = normalizeSelectableSubtitleLanguageCode(
     subtitleStyle.secondaryPreferredLanguage ?? persistentSettings.secondarySubtitleLanguage,
     DEFAULTS.subtitleStyle.secondaryPreferredLanguage
@@ -257,6 +265,9 @@ export function normalizePlayerSettings(settings = {}) {
     addonSubtitleStartupMode: ["FAST_STARTUP", "PREFERRED_ONLY", "ALL_SUBTITLES"].includes(String(persistentSettings.addonSubtitleStartupMode || "").toUpperCase())
       ? String(persistentSettings.addonSubtitleStartupMode).toUpperCase()
       : "ALL_SUBTITLES",
+    addonSubtitleStartupModeAutoPreferred: Boolean(
+      persistentSettings.addonSubtitleStartupModeAutoPreferred
+    ),
     streamAutoPlayMode: normalizeStreamAutoPlayMode(
       persistentSettings.streamAutoPlayMode ?? DEFAULTS.streamAutoPlayMode
     ),
@@ -309,7 +320,7 @@ export function normalizePlayerSettings(settings = {}) {
     osdClockEnabled: Boolean(
       persistentSettings.osdClockEnabled ?? DEFAULTS.osdClockEnabled
     ),
-    subtitlesEnabled,
+    subtitlesEnabled: true,
     secondaryPreferredAudioLanguage: (() => {
       const normalized = String(
         persistentSettings.secondaryPreferredAudioLanguage ??

@@ -21,6 +21,12 @@ import { LocalStore } from "./core/storage/localStore.js";
 import { I18n } from "./i18n/index.js";
 import { getLatestAppUpdate } from "./core/update/appUpdateService.js";
 import { showAppUpdatePrompt } from "./ui/components/appUpdatePrompt.js";
+import { resolveExperienceRoute } from "./core/profile/experienceModeRouting.js";
+
+// These legacy Web-only overrides are no longer user settings. Navigation now
+// uses the stable grid algorithm and simulator detection automatically.
+LocalStore.remove("strictDpadGridNavigation");
+LocalStore.remove("rotatedDpadMapping");
 
 (function applyLegacyPatches() {
   const originalGetElementById = document.getElementById;
@@ -212,11 +218,16 @@ async function enterWithLastProfile({ restoreWebOsRoute = false } = {}) {
       console.warn("Stream badge image prerender failed", error);
     });
   }
+  const experienceRoute = activeProfile
+    ? await resolveExperienceRoute(activeProfile.id)
+    : "home";
   const resumeRoute =
     restoreWebOsRoute && typeof Router.consumeWebOsResumeRoute === "function"
       ? Router.consumeWebOsResumeRoute()
       : null;
-  if (resumeRoute?.route) {
+  if (experienceRoute !== "home") {
+    await Router.navigate(experienceRoute, {}, { replaceHistory: true, skipStackPush: true });
+  } else if (resumeRoute?.route) {
     await Router.navigate(resumeRoute.route, resumeRoute.params || {}, {
       replaceHistory: true,
       skipStackPush: true

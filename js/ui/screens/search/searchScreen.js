@@ -31,7 +31,7 @@ import {
   renderTitleWatchedBadge
 } from "../../components/watchedTitleBadge.js";
 import { renderLoadingIndicator } from "../../components/loadingIndicator.js";
-import { buildSearchTargets, catalogSupportsExtra } from "./searchCatalogTargets.js";
+import { buildSearchScheduleIndices, buildSearchTargets } from "./searchCatalogTargets.js";
 
 const POSTER_HOLD_DELAY_MS = 650;
 const SEARCH_RESULTS_PER_ROW_DEFAULT = 18;
@@ -237,13 +237,16 @@ function formatReleaseYear(item = {}) {
   return "";
 }
 
-async function withTimeout(promise, ms, fallbackValue) {
+async function withTimeout(promise, ms, fallbackValue, onTimeout = null) {
   let timer = null;
   try {
     return await Promise.race([
       promise,
       new Promise((resolve) => {
-        timer = setTimeout(() => resolve(fallbackValue), ms);
+        timer = setTimeout(() => {
+          if (typeof onTimeout === "function") onTimeout();
+          resolve(fallbackValue);
+        }, ms);
       })
     ]);
   } finally {
@@ -661,12 +664,14 @@ export const SearchScreen = {
   async searchRows(query, { token = this.loadToken, onFirstResults = null } = {}) {
     const addons = await addonRepository.getInstalledAddons();
     const searchableCatalogs = buildSearchTargets(addons);
+    const scheduleIndices = buildSearchScheduleIndices(searchableCatalogs);
     const batchSize = getSearchCatalogBatchSize();
     const itemLimit = getSearchResultsPerRow();
     const responses = new Array(searchableCatalogs.length);
-    let nextCatalogIndex = 0;
+    let nextScheduleIndex = 0;
     let publishedFirstResults = false;
     const runCatalogSearch = async (catalog) => {
+      const controller = typeof AbortController === "function" ? new AbortController() : null;
       try {
         const result = await withTimeout(
           catalogRepository.getCatalog({
@@ -678,10 +683,12 @@ export const SearchScreen = {
             type: catalog.type,
             skip: 0,
             extraArgs: { search: query },
-            supportsSkip: catalog.supportsSkip
+            supportsSkip: catalog.supportsSkip,
+            signal: controller?.signal || null
           }),
           getSearchCatalogTimeoutMs(),
-          { status: "error", message: "timeout" }
+          { status: "error", message: "timeout" },
+          () => controller?.abort()
         );
         return { catalog, result };
       } catch (err) {
@@ -736,9 +743,9 @@ export const SearchScreen = {
 
     const runWorker = async () => {
       while (token === this.loadToken) {
-        const index = nextCatalogIndex;
-        nextCatalogIndex += 1;
-        if (index >= searchableCatalogs.length) return;
+        const index = scheduleIndices[nextScheduleIndex];
+        nextScheduleIndex += 1;
+        if (typeof index !== "number") return;
         responses[index] = await runCatalogSearch(searchableCatalogs[index]);
         publishFirstResults();
       }
