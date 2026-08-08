@@ -1146,9 +1146,17 @@ function parseEpisodeReleaseDateForContinueWatching(released) {
   if (!raw) {
     return null;
   }
-  const exactTime = Date.parse(raw);
-  if (Number.isFinite(exactTime)) {
-    return exactTime;
+  // Only a strict ISO 8601 date-time parses identically across engines, so keep
+  // its exact time. For any other string, use the extracted ISO date portion:
+  // Date.parse on non-ISO / space separated / locale date strings is
+  // implementation and timezone dependent, and on some TV browsers resolved a
+  // day or more off, which made Continue Watching treat episodes as aired
+  // before their real release date.
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(raw)) {
+    const exactTime = Date.parse(raw);
+    if (Number.isFinite(exactTime)) {
+      return exactTime;
+    }
   }
   const datePortion = raw.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0];
   const parsedTime = datePortion ? Date.parse(datePortion) : NaN;
