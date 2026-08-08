@@ -140,8 +140,8 @@ function registerCommand(commandName, includeBody) {
   });
 }
 
-function registerSupabaseProxyCommand() {
-  service.register("supabaseProxy", function (message) {
+function registerSafeHttpProxyCommand(commandName) {
+  service.register(commandName, function (message) {
     var payload = getMessagePayload(message);
     var proxyRequest = {
       url: payload.url,
@@ -1384,7 +1384,8 @@ function registerEngineFsDiagnosticCommand() {
 ensureRuntimeStarted();
 registerCommand("ping", false);
 registerCommand("status", true);
-registerSupabaseProxyCommand();
+registerSafeHttpProxyCommand("supabaseProxy");
+registerSafeHttpProxyCommand("safeHttpProxy");
 registerEngineFsKeepAliveCommands();
 registerTracksCommand();
 registerSubtitleTextCommand();

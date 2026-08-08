@@ -23,7 +23,8 @@ export const ENV_PROPERTY_KEYS = [
   "TRAKT_REDIRECT_URI",
   "SIMKL_CLIENT_ID",
   "SIMKL_API_URL",
-  "SIMKL_APP_NAME"
+  "SIMKL_APP_NAME",
+  "PREMIUMIZE_CLIENT_ID"
 ];
 
 const DEFAULT_ENV_VALUES = {
@@ -47,7 +48,8 @@ const DEFAULT_ENV_VALUES = {
   TRAKT_REDIRECT_URI: "urn:ietf:wg:oauth:2.0:oob",
   SIMKL_CLIENT_ID: "",
   SIMKL_API_URL: "https://api.simkl.com",
-  SIMKL_APP_NAME: "nuvio"
+  SIMKL_APP_NAME: "nuvio",
+  PREMIUMIZE_CLIENT_ID: ""
 };
 
 async function pathExists(filePath) {

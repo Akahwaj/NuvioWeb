@@ -583,6 +583,27 @@ const store = createProfileScopedStore({
   normalize: normalizeDebridSettings
 });
 
+function providerApiKeyField(providerId) {
+  const normalizedProviderId = String(providerId || "")
+    .trim()
+    .toLowerCase();
+  return normalizedProviderId === "torbox"
+    ? "torboxApiKey"
+    : normalizedProviderId === "premiumize"
+      ? "premiumizeApiKey"
+      : normalizedProviderId === "realdebrid"
+        ? "realDebridApiKey"
+        : "";
+}
+
+function queueProviderCredentialPush(profileId) {
+  void import("../../core/profile/providerCredentialSyncService.js")
+    .then(({ ProviderCredentialSyncService }) =>
+      ProviderCredentialSyncService.queuePush(profileId)
+    )
+    .catch((error) => console.warn("Provider credential sync enqueue failed", error));
+}
+
 export const DebridSettingsStore = {
   getForProfile(profileId) {
     return store.getForProfile(profileId);
@@ -605,21 +626,20 @@ export const DebridSettingsStore = {
   },
 
   setProviderApiKey(providerId, apiKey, options = {}) {
-    const normalizedProviderId = String(providerId || "")
-      .trim()
-      .toLowerCase();
-    const field =
-      normalizedProviderId === "torbox"
-        ? "torboxApiKey"
-        : normalizedProviderId === "premiumize"
-          ? "premiumizeApiKey"
-          : normalizedProviderId === "realdebrid"
-            ? "realDebridApiKey"
-            : "";
+    return this.setProviderApiKeyForProfile(
+      options.profileId,
+      providerId,
+      apiKey,
+      options
+    );
+  },
+
+  setProviderApiKeyForProfile(profileId, providerId, apiKey, options = {}) {
+    const field = providerApiKeyField(providerId);
     if (!field) {
-      return store.get();
+      return store.getForProfile(profileId);
     }
-    const current = store.get();
+    const current = store.getForProfile(profileId);
     const partial = { [field]: String(apiKey || "").trim() };
     const next = { ...current, ...partial };
     const hasAnyVisibleKey = Boolean(next.torboxApiKey || next.premiumizeApiKey);
@@ -627,7 +647,11 @@ export const DebridSettingsStore = {
       partial.enabled = false;
     }
     partial.preferredResolverProviderId = normalizePreferredResolverProviderId(next);
-    return store.set(partial, options);
+    const saved = store.setForProfile(profileId, partial, options);
+    if (!options.silentCredentialSync && String(current[field] || "") !== partial[field]) {
+      queueProviderCredentialPush(profileId);
+    }
+    return saved;
   },
 
   setStreamMaxResults(maxResults, options = {}) {

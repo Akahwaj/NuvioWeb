@@ -9609,6 +9609,86 @@ button:focus-visible {
   line-height: 1.2;
 }
 
+.settings-debrid-auth-dialog {
+  width: 620px;
+  max-width: calc(100vw - 96px);
+  max-height: calc(100vh - 64px);
+  padding: 36px 44px;
+  text-align: center;
+  overflow-y: auto;
+}
+
+.settings-debrid-auth-dialog .settings-dialog-title {
+  text-align: center;
+}
+
+.settings-debrid-auth-body,
+.settings-debrid-auth-error,
+.settings-debrid-auth-loading,
+.settings-debrid-auth-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-debrid-auth-body,
+.settings-debrid-auth-error {
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settings-debrid-auth-loading,
+.settings-debrid-auth-status {
+  gap: 12px;
+  color: #bcbcbc;
+  font-size: 22px;
+}
+
+.settings-debrid-auth-copy,
+.settings-debrid-auth-url,
+.settings-debrid-auth-error {
+  color: #bcbcbc;
+  font-size: 20px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.settings-debrid-auth-qr {
+  display: block;
+  width: 196px;
+  height: 196px;
+  border-radius: 12px;
+}
+
+.settings-debrid-auth-code {
+  color: #fff;
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+}
+
+.settings-debrid-auth-url {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.settings-debrid-auth-error {
+  color: #ff8a80;
+}
+
+.settings-debrid-auth-dialog .settings-dialog-list {
+  flex-direction: row;
+  justify-content: center;
+  overflow: visible;
+}
+
+.settings-debrid-auth-dialog .settings-dialog-option {
+  min-width: 180px;
+  justify-content: center;
+  text-align: center;
+}
+
 .settings-dialog-list {
   display: flex;
   flex-direction: column;
@@ -18687,6 +18767,21 @@ html[data-card-depth="true"][data-card-depth-trailers="true"] .detail-trailer-ca
 .no-flex-gap .settings-account-status-card > * + *,
 .no-flex-gap .settings-language-option-meta > * + * {
   margin-top: 16px;
+}
+
+.no-flex-gap .settings-debrid-auth-body > * + *,
+.no-flex-gap .settings-debrid-auth-error > * + * {
+  margin-top: 14px;
+}
+
+.no-flex-gap .settings-debrid-auth-loading > * + *,
+.no-flex-gap .settings-debrid-auth-status > * + * {
+  margin-left: 12px;
+}
+
+.no-flex-gap .settings-debrid-auth-dialog .settings-dialog-list > * + * {
+  margin-top: 0;
+  margin-left: 12px;
 }
 
 .no-flex-gap .settings-account-status-card > * + *,

@@ -37,7 +37,14 @@ import {
 } from "../../../data/local/debridSettingsStore.js";
 import { StreamBadgeSettingsStore } from "../../../data/local/streamBadgeSettingsStore.js";
 import { DebridApi } from "../../../data/remote/api/debridApi.js";
-import { DebridProviders } from "../../../core/debrid/debridProviders.js";
+import {
+  DEBRID_AUTH_METHODS,
+  DebridProviders
+} from "../../../core/debrid/debridProviders.js";
+import {
+  DEBRID_DEVICE_AUTH_STATUS,
+  DebridDeviceAuthService
+} from "../../../core/debrid/debridDeviceAuthService.js";
 import { ProfileManager } from "../../../core/profile/profileManager.js";
 import { AuthManager } from "../../../core/auth/authManager.js";
 import { SupabaseApi } from "../../../data/remote/supabase/supabaseApi.js";
@@ -2128,6 +2135,8 @@ export const SettingsScreen = {
     this.advancedCacheCleared = false;
     this.optionDialog = this.optionDialog || null;
     this.textDialog = this.textDialog || null;
+    this.debridAuthDialog = null;
+    this.debridAuthPollTimer = null;
     this.dialogFocusIndex = Number.isFinite(this.dialogFocusIndex) ? this.dialogFocusIndex : 0;
     this.sidebarExpanded = false;
     this.pillIconOnly = false;
@@ -2483,24 +2492,30 @@ export const SettingsScreen = {
   openOptionDialog({
     title,
     message = "",
+    messageHtml = "",
     options,
     selectedId,
     onSelect,
     returnFocusKey,
     dialogClassName = "",
     optionRenderer = "default",
-    optionColumns = null
+    optionColumns = null,
+    onRender = null,
+    onClose = null
   }) {
     this.textDialog = null;
     this.optionDialog = {
       title,
       message,
+      messageHtml,
       options: Array.isArray(options) ? options : [],
       selectedId: selectedId ?? null,
       onSelect,
       returnFocusKey,
       dialogClassName,
       optionRenderer,
+      onRender,
+      onClose,
       // Compact action dialogs can opt into multiple columns so dpad left/right
       // can move between visually adjacent options.
       optionColumns: Number.isFinite(Number(optionColumns))
@@ -2582,7 +2597,9 @@ export const SettingsScreen = {
       return;
     }
     this.contentFocusKey = this.optionDialog.returnFocusKey || this.contentFocusKey;
+    const onClose = this.optionDialog.onClose;
     this.optionDialog = null;
+    if (typeof onClose === "function") onClose();
     this.focusZone = "content";
   },
 
@@ -2610,7 +2627,7 @@ export const SettingsScreen = {
       String(this.optionDialog.dialogClassName || "") === "settings-p2p-consent-dialog";
     const messageHtml = this.optionDialog.message
       ? `<div class="settings-text-dialog-message settings-option-dialog-message${isP2pConsentDialog ? " settings-p2p-consent-message" : ""}">${escapeHtml(String(this.optionDialog.message)).replace(/\n/g, "<br>")}</div>`
-      : "";
+      : String(this.optionDialog.messageHtml || "");
 
     return `
       <div class="settings-dialog-backdrop">
@@ -2770,6 +2787,199 @@ export const SettingsScreen = {
 
   getTextDialogMaxFocusIndex() {
     return this.textDialog && typeof this.textDialog.onClear === "function" ? 3 : 2;
+  },
+
+  stopDebridDeviceAuth({ clearState = true } = {}) {
+    if (this.debridAuthPollTimer) {
+      clearTimeout(this.debridAuthPollTimer);
+      this.debridAuthPollTimer = null;
+    }
+    this.debridAuthNonce = Number(this.debridAuthNonce || 0) + 1;
+    if (clearState) this.debridAuthDialog = null;
+  },
+
+  isCurrentDebridAuth(nonce) {
+    return Boolean(
+      this.debridAuthDialog && Number(this.debridAuthDialog.nonce) === Number(nonce)
+    );
+  },
+
+  debridAuthDialogMessageHtml() {
+    const state = this.debridAuthDialog;
+    if (!state) return "";
+    const providerName = escapeHtml(state.provider.displayName);
+    if (state.status === "connected") {
+      return `<div class="settings-debrid-auth-copy">${escapeHtml(
+        t("debrid_device_auth_connected", { provider: state.provider.displayName }, `${state.provider.displayName} is connected.`)
+      )}</div>`;
+    }
+    if (state.status === "starting") {
+      return `<div class="settings-debrid-auth-loading">${renderLoadingIndicator({ size: "small" })}<span>${escapeHtml(
+        t("debrid_device_auth_starting", {}, `Starting ${state.provider.displayName} sign-in…`)
+      )}</span></div>`;
+    }
+    if (state.status === "waiting" && state.session) {
+      const verificationUrl =
+        state.session.friendlyVerificationUrl || state.session.verificationUrl;
+      return `
+        <div class="settings-debrid-auth-body">
+          <p class="settings-debrid-auth-copy">${escapeHtml(
+            t("debrid_device_auth_instructions", {}, "Scan the QR code or open the address on another device, then enter the code.")
+          )}</p>
+          <canvas class="settings-debrid-auth-qr" data-debrid-auth-qr aria-label="${escapeHtml(
+            t("cd_qr_code", {}, `${providerName} QR code`)
+          )}"></canvas>
+          <div class="settings-debrid-auth-code">${escapeHtml(state.session.userCode)}</div>
+          <div class="settings-debrid-auth-url">${escapeHtml(verificationUrl)}</div>
+          <div class="settings-debrid-auth-status">${renderLoadingIndicator({ size: "small" })}<span>${escapeHtml(
+            t("debrid_device_auth_waiting", {}, "Waiting for authorization…")
+          )}</span></div>
+        </div>`;
+    }
+    const fallback =
+      state.status === "expired"
+        ? t("debrid_device_auth_expired", {}, "The authorization code expired. Try again.")
+        : state.status === "missingConfiguration"
+          ? t("debrid_device_auth_missing_configuration", {}, "Premiumize sign-in is not configured in this build.")
+          : t("debrid_device_auth_failed", {}, `Could not connect ${state.provider.displayName}.`);
+    return `<div class="settings-debrid-auth-error"><strong>${providerName}</strong><span>${escapeHtml(
+      state.message || fallback
+    )}</span></div>`;
+  },
+
+  refreshDebridDeviceAuthDialog() {
+    const state = this.debridAuthDialog;
+    if (!state) return;
+    const isConnected = state.status === "connected";
+    const canRetry = ["failed", "expired", "missingConfiguration"].includes(state.status);
+    const options = isConnected
+      ? [
+          { id: "disconnect", label: t("debrid_disconnect", {}, "Disconnect") },
+          { id: "cancel", label: t("common.cancel", {}, "Cancel") }
+        ]
+      : [
+          ...(canRetry ? [{ id: "retry", label: t("common.retry", {}, "Retry") }] : []),
+          { id: "cancel", label: t("common.cancel", {}, "Cancel") }
+        ];
+    this.openOptionDialog({
+      title: isConnected
+        ? t("debrid_disconnect_provider", { provider: state.provider.displayName }, `Disconnect ${state.provider.displayName}`)
+        : t("debrid_connect_provider", { provider: state.provider.displayName }, `Connect ${state.provider.displayName}`),
+      messageHtml: this.debridAuthDialogMessageHtml(),
+      options,
+      returnFocusKey: `integration:debrid:key:${state.provider.id}`,
+      dialogClassName: "settings-debrid-auth-dialog",
+      onRender: (dialogSlot) => {
+        const canvas = dialogSlot.querySelector?.("[data-debrid-auth-qr]");
+        const content =
+          this.debridAuthDialog?.session?.friendlyVerificationUrl ||
+          this.debridAuthDialog?.session?.verificationUrl ||
+          "";
+        if (canvas && content) {
+          try {
+            QrCodeGenerator.generate(canvas, content, 420);
+          } catch (error) {
+            console.warn("Failed to generate Debrid authorization QR", error);
+          }
+        }
+      },
+      onClose: () => this.stopDebridDeviceAuth(),
+      onSelect: async (option) => {
+        if (option.id === "retry") {
+          this.restartDebridDeviceAuth();
+          return false;
+        }
+        if (option.id === "disconnect") {
+          DebridSettingsStore.setProviderApiKey(state.provider.id, "");
+        }
+        return true;
+      }
+    });
+  },
+
+  openDebridDeviceAuthDialog(provider) {
+    this.stopDebridDeviceAuth();
+    const connected = Boolean(DebridProviders.apiKeyFor(DebridSettingsStore.get(), provider.id));
+    const nonce = Number(this.debridAuthNonce || 0) + 1;
+    this.debridAuthNonce = nonce;
+    this.debridAuthDialog = {
+      nonce,
+      provider,
+      status: connected ? "connected" : "starting",
+      session: null,
+      message: ""
+    };
+    this.refreshDebridDeviceAuthDialog();
+    if (!connected) setTimeout(() => void this.startDebridDeviceAuth(nonce), 0);
+  },
+
+  restartDebridDeviceAuth() {
+    const provider = this.debridAuthDialog?.provider;
+    if (!provider) return;
+    this.stopDebridDeviceAuth({ clearState: false });
+    const nonce = Number(this.debridAuthNonce || 0) + 1;
+    this.debridAuthNonce = nonce;
+    this.debridAuthDialog = { nonce, provider, status: "starting", session: null, message: "" };
+    this.refreshDebridDeviceAuthDialog();
+    setTimeout(() => void this.startDebridDeviceAuth(nonce), 0);
+  },
+
+  async startDebridDeviceAuth(nonce) {
+    try {
+      const state = this.debridAuthDialog;
+      if (!state || !this.isCurrentDebridAuth(nonce)) return;
+      const session = await DebridDeviceAuthService.start(state.provider.id);
+      if (!this.isCurrentDebridAuth(nonce)) return;
+      this.debridAuthDialog.session = session;
+      this.debridAuthDialog.status = "waiting";
+      this.debridAuthDialog.message = "";
+      this.refreshDebridDeviceAuthDialog();
+      await this.render({ refreshModel: false });
+      this.scheduleDebridDeviceAuthPoll(nonce);
+    } catch (error) {
+      if (!this.isCurrentDebridAuth(nonce)) return;
+      const message = String(error?.message || error || "");
+      this.debridAuthDialog.status = message.includes("PREMIUMIZE_CLIENT_ID")
+        ? "missingConfiguration"
+        : "failed";
+      this.debridAuthDialog.message = message.includes("PREMIUMIZE_CLIENT_ID") ? "" : message;
+      this.refreshDebridDeviceAuthDialog();
+      await this.render({ refreshModel: false });
+    }
+  },
+
+  scheduleDebridDeviceAuthPoll(nonce) {
+    if (!this.isCurrentDebridAuth(nonce)) return;
+    const seconds = Math.max(1, Math.trunc(Number(this.debridAuthDialog?.session?.intervalSeconds || 5)));
+    this.debridAuthPollTimer = setTimeout(() => void this.pollDebridDeviceAuth(nonce), seconds * 1000);
+  },
+
+  async pollDebridDeviceAuth(nonce) {
+    const state = this.debridAuthDialog;
+    if (!state?.session || !this.isCurrentDebridAuth(nonce)) return;
+    const result = await DebridDeviceAuthService.redeem(
+      state.provider.id,
+      state.session.deviceCode
+    ).catch((error) => ({
+      status: DEBRID_DEVICE_AUTH_STATUS.FAILED,
+      message: String(error?.message || error || "")
+    }));
+    if (!this.isCurrentDebridAuth(nonce)) return;
+    if (result.status === DEBRID_DEVICE_AUTH_STATUS.AUTHORIZED) {
+      DebridSettingsStore.setProviderApiKey(state.provider.id, result.accessToken);
+      this.closeOptionDialog();
+      await this.render();
+      return;
+    }
+    if (result.status === DEBRID_DEVICE_AUTH_STATUS.PENDING) {
+      this.scheduleDebridDeviceAuthPoll(nonce);
+      return;
+    }
+    this.debridAuthDialog.status =
+      result.status === DEBRID_DEVICE_AUTH_STATUS.EXPIRED ? "expired" : "failed";
+    this.debridAuthDialog.message = String(result.message || "");
+    this.refreshDebridDeviceAuthDialog();
+    await this.render({ refreshModel: false });
   },
 
   renderCollapsibleRow({ focusKey, title, subtitle, expanded, bodyHtml = "", classes = "" }) {
@@ -4013,6 +4223,10 @@ export const SettingsScreen = {
       });
       providers.forEach((provider) => {
         this.actionMap.set(`integration:debrid:key:${provider.id}`, () => {
+          if (provider.authMethod === DEBRID_AUTH_METHODS.DEVICE_CODE) {
+            this.openDebridDeviceAuthDialog(provider);
+            return;
+          }
           const current = DebridProviders.apiKeyFor(DebridSettingsStore.get(), provider.id);
           this.openTextDialog({
             title: t(
@@ -4296,8 +4510,12 @@ export const SettingsScreen = {
                     `Connect your ${provider.displayName} account.`
                   ),
                   value: maskValue(
-                    DebridProviders.apiKeyFor(model.debrid, provider.id),
-                    t("settings.integration.debrid.notSet", {}, "Not set")
+                    provider.authMethod === DEBRID_AUTH_METHODS.DEVICE_CODE
+                      ? ""
+                      : DebridProviders.apiKeyFor(model.debrid, provider.id),
+                    DebridProviders.apiKeyFor(model.debrid, provider.id)
+                      ? t("debrid_connected", {}, "Connected")
+                      : t("settings.integration.debrid.notSet", {}, "Not set")
                   ),
                   icon: "chevron"
                 })
@@ -6765,6 +6983,9 @@ export const SettingsScreen = {
     if (dialogSlot && dialogSlot.innerHTML !== dialogHtml) {
       dialogSlot.innerHTML = dialogHtml;
     }
+    if (dialogSlot && typeof this.optionDialog?.onRender === "function") {
+      this.optionDialog.onRender(dialogSlot);
+    }
     this.bindTextDialogEvents();
 
     bindRootSidebarEvents(this.container, {
@@ -7163,7 +7384,11 @@ export const SettingsScreen = {
         return;
       }
       if (typeof this.optionDialog.onSelect === "function") {
-        await this.optionDialog.onSelect(option);
+        const shouldClose = await this.optionDialog.onSelect(option);
+        if (shouldClose === false) {
+          await this.render({ refreshModel: false });
+          return;
+        }
       }
       this.closeOptionDialog();
       await this.render();
@@ -7454,6 +7679,7 @@ export const SettingsScreen = {
   cleanup() {
     this.persistUiState();
     this.stopTraktPolling?.();
+    this.stopDebridDeviceAuth();
     if (this.container && this.handleWheelBound) {
       this.container.removeEventListener("wheel", this.handleWheelBound);
     }

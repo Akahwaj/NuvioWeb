@@ -35,3 +35,4 @@ export const TRAKT_REDIRECT_URI = String(
 export const SIMKL_CLIENT_ID = String(runtimeEnv.SIMKL_CLIENT_ID || "").trim();
 export const SIMKL_API_URL = String(runtimeEnv.SIMKL_API_URL || "https://api.simkl.com").trim();
 export const SIMKL_APP_NAME = String(runtimeEnv.SIMKL_APP_NAME || "nuvio").trim() || "nuvio";
+export const PREMIUMIZE_CLIENT_ID = String(runtimeEnv.PREMIUMIZE_CLIENT_ID || "").trim();

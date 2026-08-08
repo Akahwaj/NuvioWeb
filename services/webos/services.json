@@ -65,6 +65,11 @@
           "name": "enginefsKeepAliveStop",
           "description": "Stop an active EngineFS runtime keep-alive subscription",
           "public": true
+        },
+        {
+          "name": "safeHttpProxy",
+          "description": "Proxy allowlisted account-authentication requests for legacy webOS",
+          "public": true
         }
       ]
     }

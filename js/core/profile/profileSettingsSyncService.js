@@ -40,6 +40,9 @@ const EXCLUDED_PROFILE_KEYS = {
   layout_settings: new Set(["search_discover_enabled"]),
   player_settings: new Set(["audio_amplification_db", "persist_audio_amplification"]),
   debrid_settings: new Set([
+    "torbox_api_key",
+    "premiumize_api_key",
+    "real_debrid_api_key",
     "stream_badges_enabled",
     "stream_show_badges",
     "show_stream_badges"
