@@ -52,15 +52,28 @@ function isProxyableDebridAuthUrl(value = "", method = "GET") {
     const path = parsed.pathname;
     if (parsed.protocol !== "https:") return false;
     const normalizedMethod = String(method || "GET").toUpperCase();
-    return (
+    const authTarget =
       (host === "api.torbox.app" &&
         path === "/v1/api/user/auth/device/start" &&
         normalizedMethod === "GET") ||
       (host === "api.torbox.app" &&
         path === "/v1/api/user/auth/device/token" &&
         normalizedMethod === "POST") ||
-      (host === "www.premiumize.me" && path === "/token" && normalizedMethod === "POST")
-    );
+      (host === "www.premiumize.me" && path === "/token" && normalizedMethod === "POST");
+    const cloudTarget =
+      normalizedMethod === "GET" &&
+      ((host === "api.torbox.app" &&
+        [
+          "/v1/api/torrents/mylist",
+          "/v1/api/usenet/mylist",
+          "/v1/api/webdl/mylist",
+          "/v1/api/torrents/requestdl",
+          "/v1/api/usenet/requestdl",
+          "/v1/api/webdl/requestdl"
+        ].includes(path)) ||
+        (host === "www.premiumize.me" &&
+          ["/api/item/listall", "/api/item/details"].includes(path)));
+    return authTarget || cloudTarget;
   } catch (_) {
     return false;
   }

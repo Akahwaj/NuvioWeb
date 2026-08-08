@@ -9689,6 +9689,164 @@ button:focus-visible {
   text-align: center;
 }
 
+.library-view-mode-row,
+.library-cloud-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.library-view-mode-button {
+  min-width: 150px;
+  padding: 14px 24px;
+  border: 2px solid var(--border-color, #333);
+  border-radius: 999px;
+  background: var(--card-bg, #202124);
+  color: var(--text-color, #fff);
+  font-size: 21px;
+}
+
+.library-view-mode-button.selected,
+.library-view-mode-button.focused {
+  border-color: var(--focus-color, #fff);
+  background: var(--focus-bg, #303030);
+}
+
+.library-cloud-toolbar {
+  justify-content: space-between;
+}
+
+.library-cloud-search-shell {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--text-secondary, #bcbcbc);
+  font-size: 17px;
+}
+
+.library-cloud-search-input {
+  min-height: 58px;
+  padding: 0 20px;
+  border: 2px solid var(--border-color, #333);
+  border-radius: 12px;
+  background: var(--card-bg, #202124);
+  color: var(--text-color, #fff);
+  font-size: 21px;
+  box-sizing: border-box;
+}
+
+.library-cloud-search-input.focused {
+  border-color: var(--focus-color, #fff);
+  box-shadow: 0 0 0 2px var(--focus-color, #fff);
+}
+
+.library-cloud-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.library-cloud-card {
+  width: 100%;
+  min-height: 108px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 18px 22px;
+  border: 2px solid var(--border-color, #333);
+  border-radius: 12px;
+  background: var(--card-bg, #202124);
+  box-sizing: border-box;
+}
+
+.library-cloud-card.focused {
+  border-color: var(--focus-color, #fff);
+  background: var(--focus-bg, #303030);
+}
+
+.library-cloud-card-copy h3,
+.library-cloud-card-copy p {
+  margin: 0;
+}
+
+.library-cloud-card-copy h3 {
+  color: var(--text-color, #fff);
+  font-size: 23px;
+}
+
+.library-cloud-card-copy p {
+  margin-top: 8px;
+  color: var(--text-secondary, #bcbcbc);
+  font-size: 17px;
+}
+
+.library-cloud-card-status {
+  flex: 0 0 auto;
+  color: var(--text-tertiary, #8c8c8c);
+  font-size: 18px;
+}
+
+.library-cloud-card-status.playable {
+  color: var(--primary-color, #fff);
+}
+
+.library-cloud-file-dialog {
+  width: 820px;
+  max-width: calc(100vw - 96px);
+}
+
+.library-cloud-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 430px;
+  overflow-y: auto;
+}
+
+.library-cloud-file-button {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 18px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: var(--card-bg, #242424);
+  color: var(--text-color, #fff);
+  font-size: 19px;
+  text-align: left;
+}
+
+.library-cloud-file-button.focused {
+  border-color: var(--focus-color, #fff);
+  background: var(--focus-bg, #303030);
+}
+
+.library-cloud-file-button small {
+  color: var(--text-secondary, #bcbcbc);
+  font-size: 16px;
+}
+
+.no-flex-gap .library-view-mode-row > * + *,
+.no-flex-gap .library-cloud-toolbar > * + *,
+.no-flex-gap .library-cloud-card > * + *,
+.no-flex-gap .library-cloud-file-button > * + * {
+  margin-left: 16px;
+}
+
+.no-flex-gap .library-cloud-search-shell > * + * {
+  margin-top: 7px;
+}
+
+.no-flex-gap .library-cloud-grid > * + *,
+.no-flex-gap .library-cloud-file-list > * + * {
+  margin-top: 12px;
+}
+
 .settings-dialog-list {
   display: flex;
   flex-direction: column;

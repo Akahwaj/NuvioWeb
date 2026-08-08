@@ -2,6 +2,8 @@ import { AuthManager } from "../auth/authManager.js";
 import { LocalStore } from "../storage/localStore.js";
 import { DebridProviders } from "../debrid/debridProviders.js";
 import { DebridSettingsStore } from "../../data/local/debridSettingsStore.js";
+import { MdbListSettingsStore } from "../../data/local/mdbListSettingsStore.js";
+import { AnimeSkipSettingsStore } from "../../data/local/animeSkipSettingsStore.js";
 import { SupabaseApi } from "../../data/remote/supabase/supabaseApi.js";
 import { ProfileManager } from "./profileManager.js";
 import { getSyncClientId } from "../sync/syncClientIdentity.js";
@@ -11,7 +13,12 @@ const PUSH_RPC = "sync_push_provider_credentials";
 const PULL_RPC = "sync_pull_provider_credentials";
 const PENDING_KEY = "providerCredentialSyncPendingProfiles";
 const PUSH_DEBOUNCE_MS = 500;
+export const PROVIDER_CREDENTIAL_FOREGROUND_DELAY_MS = 2500;
+export const PROVIDER_CREDENTIAL_FOREGROUND_MIN_INTERVAL_MS = 60000;
 const API_KEY_FIELD = "api_key";
+const CLIENT_ID_FIELD = "client_id";
+const MDBLIST_PROVIDER = "mdblist";
+const ANIMESKIP_PROVIDER = "animeskip";
 
 const pushTimers = new Map();
 let syncInFlight = Promise.resolve();
@@ -32,48 +39,74 @@ function readPendingProfiles() {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
 
-function markPending(profileId) {
+function scopeKey(scope) {
+  return `${String(scope?.ownerId || "").trim()}:${resolveProfileId(scope?.profileId)}`;
+}
+
+function markPending(scope) {
   const pending = readPendingProfiles();
-  pending[String(resolveProfileId(profileId))] = Date.now();
+  pending[scopeKey(scope)] = Date.now();
   LocalStore.set(PENDING_KEY, pending);
 }
 
-function clearPending(profileId) {
+function clearPending(scope) {
   const pending = readPendingProfiles();
-  delete pending[String(resolveProfileId(profileId))];
+  delete pending[scopeKey(scope)];
+  delete pending[String(resolveProfileId(scope?.profileId))];
   LocalStore.set(PENDING_KEY, pending);
 }
 
-function isPending(profileId) {
-  return Object.prototype.hasOwnProperty.call(
-    readPendingProfiles(),
-    String(resolveProfileId(profileId))
-  );
+function isPending(scope) {
+  return Object.prototype.hasOwnProperty.call(readPendingProfiles(), scopeKey(scope));
+}
+
+export function buildProviderCredentialSnapshot(
+  profileId,
+  { debridSettings = {}, mdbListSettings = {}, animeSkipSettings = {} } = {}
+) {
+  const resolvedProfileId = resolveProfileId(profileId);
+  return {
+    profileId: resolvedProfileId,
+    values: [
+      ...DebridProviders.all().map((provider) => ({
+        provider: providerName(provider.id),
+        field: API_KEY_FIELD,
+        value: DebridProviders.apiKeyFor(debridSettings, provider.id)
+      })),
+      {
+        provider: MDBLIST_PROVIDER,
+        field: API_KEY_FIELD,
+        value: String(mdbListSettings.apiKey || "").trim()
+      },
+      {
+        provider: ANIMESKIP_PROVIDER,
+        field: CLIENT_ID_FIELD,
+        value: String(animeSkipSettings.clientId || "").trim()
+      }
+    ]
+  };
 }
 
 function snapshotFromLocal(profileId) {
   const resolvedProfileId = resolveProfileId(profileId);
-  const settings = DebridSettingsStore.getForProfile(resolvedProfileId);
-  return {
-    profileId: resolvedProfileId,
-    values: DebridProviders.all().map((provider) => ({
-      provider: providerName(provider.id),
-      value: DebridProviders.apiKeyFor(settings, provider.id)
-    }))
-  };
+  return buildProviderCredentialSnapshot(resolvedProfileId, {
+    debridSettings: DebridSettingsStore.getForProfile(resolvedProfileId),
+    mdbListSettings: MdbListSettingsStore.getForProfile(resolvedProfileId),
+    animeSkipSettings: AnimeSkipSettingsStore.getForProfile(resolvedProfileId)
+  });
 }
 
-function credentialJson(value) {
-  return { [API_KEY_FIELD]: String(value || "").trim() };
+function credentialJson(entry) {
+  return { [entry.field]: String(entry.value || "").trim() };
 }
 
-function credentialParams(snapshot) {
+export function providerCredentialParams(snapshot, originClientId = getSyncClientId()) {
   return {
     p_profile_id: snapshot.profileId,
-    p_origin_client_id: getSyncClientId(),
+    p_origin_client_id: originClientId,
     p_credentials: snapshot.values.map((entry) => ({
       provider: entry.provider,
-      credential_json: credentialJson(entry.value)
+      credential_json: credentialJson(entry)
     }))
   };
 }
@@ -104,10 +137,10 @@ export function mergeProviderCredentialRows(snapshot, rows = []) {
       const remote = remoteByProvider.get(local.provider);
       if (!remote) return local;
       const payload = parseCredentialJson(remote.credential_json ?? remote.credentialJson);
-      if (!payload || typeof payload[API_KEY_FIELD] !== "string") {
+      if (!payload || typeof payload[local.field] !== "string") {
         throw new Error(`Invalid credential payload for ${local.provider}`);
       }
-      return { ...local, value: payload[API_KEY_FIELD].trim() };
+      return { ...local, value: payload[local.field].trim() };
     })
   };
 }
@@ -146,11 +179,11 @@ async function requireCurrentScope(expected) {
 }
 
 async function pushSnapshot(snapshot) {
-  await SupabaseApi.rpc(PUSH_RPC, credentialParams(snapshot), true);
+  await SupabaseApi.rpc(PUSH_RPC, providerCredentialParams(snapshot), true);
 }
 
 async function seedSnapshot(snapshot) {
-  await SupabaseApi.rpc(SEED_RPC, credentialParams(snapshot), true);
+  await SupabaseApi.rpc(SEED_RPC, providerCredentialParams(snapshot), true);
 }
 
 async function pullRows(profileId) {
@@ -160,31 +193,53 @@ async function pullRows(profileId) {
 
 function applySnapshot(snapshot) {
   snapshot.values.forEach((entry) => {
-    const providerId = entry.provider.startsWith("debrid:")
-      ? entry.provider.slice("debrid:".length)
-      : "";
-    if (!providerId) return;
-    DebridSettingsStore.setProviderApiKeyForProfile(snapshot.profileId, providerId, entry.value, {
-      silentSync: true,
-      silentCredentialSync: true
-    });
+    if (entry.provider.startsWith("debrid:")) {
+      const providerId = entry.provider.slice("debrid:".length);
+      if (!providerId) return;
+      DebridSettingsStore.setProviderApiKeyForProfile(snapshot.profileId, providerId, entry.value, {
+        silentSync: true,
+        silentCredentialSync: true
+      });
+    } else if (entry.provider === MDBLIST_PROVIDER) {
+      MdbListSettingsStore.setForProfile(
+        snapshot.profileId,
+        { apiKey: entry.value },
+        { silentSync: true, silentCredentialSync: true }
+      );
+    } else if (entry.provider === ANIMESKIP_PROVIDER) {
+      AnimeSkipSettingsStore.setForProfile(
+        snapshot.profileId,
+        { clientId: entry.value },
+        { silentSync: true, silentCredentialSync: true }
+      );
+    }
   });
 }
 
 export const ProviderCredentialSyncService = {
+  foregroundPullTimer: null,
+  foregroundPullInFlight: false,
+  lastForegroundPullAtMs: 0,
+
   queuePush(profileId = null) {
     if (!AuthManager.isAuthenticated) return;
     const resolvedProfileId = resolveProfileId(profileId);
-    markPending(resolvedProfileId);
-    const existing = pushTimers.get(resolvedProfileId);
-    if (existing) clearTimeout(existing);
-    pushTimers.set(
-      resolvedProfileId,
-      setTimeout(() => {
-        pushTimers.delete(resolvedProfileId);
-        void this.pushCurrentToRemote(resolvedProfileId);
-      }, PUSH_DEBOUNCE_MS)
-    );
+    void currentScope(resolvedProfileId)
+      .then((scope) => {
+        if (!scope) return;
+        const key = scopeKey(scope);
+        markPending(scope);
+        const existing = pushTimers.get(key);
+        if (existing) clearTimeout(existing);
+        pushTimers.set(
+          key,
+          setTimeout(() => {
+            pushTimers.delete(key);
+            void this.pushCurrentToRemote(resolvedProfileId);
+          }, PUSH_DEBOUNCE_MS)
+        );
+      })
+      .catch((error) => console.warn("Provider credential sync scope lookup failed", error));
   },
 
   async pushCurrentToRemote(profileId = null) {
@@ -195,7 +250,7 @@ export const ProviderCredentialSyncService = {
         const snapshot = snapshotFromLocal(scope.profileId);
         await pushSnapshot(snapshot);
         await requireCurrentScope(scope);
-        clearPending(scope.profileId);
+        clearPending(scope);
         return true;
       } catch (error) {
         console.warn("Provider credential sync push failed", error);
@@ -210,9 +265,9 @@ export const ProviderCredentialSyncService = {
         const scope = await currentScope(profileId);
         if (!scope) return false;
         const localSnapshot = snapshotFromLocal(scope.profileId);
-        if (isPending(scope.profileId)) {
+        if (isPending(scope)) {
           await pushSnapshot(localSnapshot);
-          clearPending(scope.profileId);
+          clearPending(scope);
         }
         await seedSnapshot(localSnapshot);
         const rows = await pullRows(scope.profileId);
@@ -221,11 +276,43 @@ export const ProviderCredentialSyncService = {
         const applied = !snapshotsEqual(localSnapshot, remoteSnapshot);
         if (applied) applySnapshot(remoteSnapshot);
         await requireCurrentScope(scope);
+        this.lastForegroundPullAtMs = Date.now();
         return applied;
       } catch (error) {
         console.warn("Provider credential sync failed; keeping local credentials", error);
         return false;
       }
     });
+  },
+
+  requestForegroundPull(force = false) {
+    if (!AuthManager.isAuthenticated) return false;
+    const now = Date.now();
+    if (!force && (this.foregroundPullTimer || this.foregroundPullInFlight)) return false;
+    if (
+      !force &&
+      now - Number(this.lastForegroundPullAtMs || 0) <
+        PROVIDER_CREDENTIAL_FOREGROUND_MIN_INTERVAL_MS
+    ) {
+      return false;
+    }
+    if (this.foregroundPullTimer) clearTimeout(this.foregroundPullTimer);
+    const delayMs = force ? 0 : PROVIDER_CREDENTIAL_FOREGROUND_DELAY_MS;
+    this.foregroundPullTimer = setTimeout(() => {
+      this.foregroundPullTimer = null;
+      if (!AuthManager.isAuthenticated) return;
+      this.foregroundPullInFlight = true;
+      void this.syncFromRemote(ProfileManager.getActiveProfileId()).finally(() => {
+        this.foregroundPullInFlight = false;
+      });
+    }, delayMs);
+    return true;
+  },
+
+  cancelForegroundPull() {
+    if (this.foregroundPullTimer) {
+      clearTimeout(this.foregroundPullTimer);
+      this.foregroundPullTimer = null;
+    }
   }
 };

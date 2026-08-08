@@ -2441,4 +2441,18 @@
     <string name="licenses_attributions_torbox_title">TorBox</string>
     <string name="licenses_attributions_torbox_body">Nuvio se conecta a TorBox para autenticación de cuenta, acceso a la biblioteca en la nube, verificación de caché y funciones de reproducción en la nube. Nuvio no está afiliado ni respaldado por TorBox.</string>
     <string name="update_error_check_failed">Error al buscar actualizaciones</string>
+    <string name="debrid_formatter_reset_value">Restablecer</string>
+    <string name="debrid_selection_count_value">{{count}} seleccionado</string>
+    <string name="debrid_service_degraded">El servicio Debrid está actualmente degradado. Vuelve a intentarlo más tarde o elige otra fuente.</string>
+    <string name="debrid_stream_description_template_prompt">Patrón de descripción de la transmisión</string>
+    <string name="debrid_stream_description_template_subtitle">Patrón utilizado para generar detalles de fuente de Direct Debrid.</string>
+    <string name="debrid_stream_description_template_title">Patrón de descripción de transmisión</string>
+    <string name="debrid_stream_name_template_prompt">Patrón de nombre de transmisión</string>
+    <string name="debrid_stream_name_template_subtitle">Patrón utilizado para generar nombres de fuente de Direct Debrid.</string>
+    <string name="debrid_stream_name_template_title">Patrón de nombre de transmisión</string>
+    <string name="cloud_library_search_label">Buscar en la biblioteca en la nube</string>
+    <string name="cloud_library_search_placeholder">Buscar archivos</string>
+    <string name="cloud_library_error_provider_unavailable">La biblioteca en la nube no está disponible para %1$s.</string>
+    <string name="cloud_library_error_disabled">La biblioteca en la nube está deshabilitada.</string>
+    <string name="cloud_library_search_clear">Borrar búsqueda</string>
 </resources>

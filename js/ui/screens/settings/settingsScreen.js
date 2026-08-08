@@ -37,10 +37,7 @@ import {
 } from "../../../data/local/debridSettingsStore.js";
 import { StreamBadgeSettingsStore } from "../../../data/local/streamBadgeSettingsStore.js";
 import { DebridApi } from "../../../data/remote/api/debridApi.js";
-import {
-  DEBRID_AUTH_METHODS,
-  DebridProviders
-} from "../../../core/debrid/debridProviders.js";
+import { DEBRID_AUTH_METHODS, DebridProviders } from "../../../core/debrid/debridProviders.js";
 import {
   DEBRID_DEVICE_AUTH_STATUS,
   DebridDeviceAuthService
@@ -2799,9 +2796,7 @@ export const SettingsScreen = {
   },
 
   isCurrentDebridAuth(nonce) {
-    return Boolean(
-      this.debridAuthDialog && Number(this.debridAuthDialog.nonce) === Number(nonce)
-    );
+    return Boolean(this.debridAuthDialog && Number(this.debridAuthDialog.nonce) === Number(nonce));
   },
 
   debridAuthDialogMessageHtml() {
@@ -2810,7 +2805,11 @@ export const SettingsScreen = {
     const providerName = escapeHtml(state.provider.displayName);
     if (state.status === "connected") {
       return `<div class="settings-debrid-auth-copy">${escapeHtml(
-        t("debrid_device_auth_connected", { provider: state.provider.displayName }, `${state.provider.displayName} is connected.`)
+        t(
+          "debrid_device_auth_connected",
+          { provider: state.provider.displayName },
+          `${state.provider.displayName} is connected.`
+        )
       )}</div>`;
     }
     if (state.status === "starting") {
@@ -2824,7 +2823,11 @@ export const SettingsScreen = {
       return `
         <div class="settings-debrid-auth-body">
           <p class="settings-debrid-auth-copy">${escapeHtml(
-            t("debrid_device_auth_instructions", {}, "Scan the QR code or open the address on another device, then enter the code.")
+            t(
+              "debrid_device_auth_instructions",
+              {},
+              "Scan the QR code or open the address on another device, then enter the code."
+            )
           )}</p>
           <canvas class="settings-debrid-auth-qr" data-debrid-auth-qr aria-label="${escapeHtml(
             t("cd_qr_code", {}, `${providerName} QR code`)
@@ -2840,7 +2843,11 @@ export const SettingsScreen = {
       state.status === "expired"
         ? t("debrid_device_auth_expired", {}, "The authorization code expired. Try again.")
         : state.status === "missingConfiguration"
-          ? t("debrid_device_auth_missing_configuration", {}, "Premiumize sign-in is not configured in this build.")
+          ? t(
+              "debrid_device_auth_missing_configuration",
+              {},
+              "Premiumize sign-in is not configured in this build."
+            )
           : t("debrid_device_auth_failed", {}, `Could not connect ${state.provider.displayName}.`);
     return `<div class="settings-debrid-auth-error"><strong>${providerName}</strong><span>${escapeHtml(
       state.message || fallback
@@ -2863,10 +2870,19 @@ export const SettingsScreen = {
         ];
     this.openOptionDialog({
       title: isConnected
-        ? t("debrid_disconnect_provider", { provider: state.provider.displayName }, `Disconnect ${state.provider.displayName}`)
-        : t("debrid_connect_provider", { provider: state.provider.displayName }, `Connect ${state.provider.displayName}`),
+        ? t(
+            "debrid_disconnect_provider",
+            { provider: state.provider.displayName },
+            `Disconnect ${state.provider.displayName}`
+          )
+        : t(
+            "debrid_connect_provider",
+            { provider: state.provider.displayName },
+            `Connect ${state.provider.displayName}`
+          ),
       messageHtml: this.debridAuthDialogMessageHtml(),
       options,
+      optionColumns: options.length,
       returnFocusKey: `integration:debrid:key:${state.provider.id}`,
       dialogClassName: "settings-debrid-auth-dialog",
       onRender: (dialogSlot) => {
@@ -2950,8 +2966,14 @@ export const SettingsScreen = {
 
   scheduleDebridDeviceAuthPoll(nonce) {
     if (!this.isCurrentDebridAuth(nonce)) return;
-    const seconds = Math.max(1, Math.trunc(Number(this.debridAuthDialog?.session?.intervalSeconds || 5)));
-    this.debridAuthPollTimer = setTimeout(() => void this.pollDebridDeviceAuth(nonce), seconds * 1000);
+    const seconds = Math.max(
+      1,
+      Math.trunc(Number(this.debridAuthDialog?.session?.intervalSeconds || 5))
+    );
+    this.debridAuthPollTimer = setTimeout(
+      () => void this.pollDebridDeviceAuth(nonce),
+      seconds * 1000
+    );
   },
 
   async pollDebridDeviceAuth(nonce) {
@@ -3279,7 +3301,11 @@ export const SettingsScreen = {
           ${this.renderActionRow({
             focusKey: "advanced:switchExperience",
             title: t("experience_mode_switch_to_advanced", {}, "Switch to Advanced"),
-            subtitle: t("experience_mode_switch_to_advanced_subtitle", {}, "Show full layout, plug-in, integration, catalog, collection, and tuning settings."),
+            subtitle: t(
+              "experience_mode_switch_to_advanced_subtitle",
+              {},
+              "Show full layout, plug-in, integration, catalog, collection, and tuning settings."
+            ),
             value: t("experience_mode_essential", {}, "Essential")
           })}
         </div></div>`;
@@ -3292,7 +3318,11 @@ export const SettingsScreen = {
         ${this.renderActionRow({
           focusKey: "advanced:switchExperience",
           title: t("experience_mode_switch_to_essential", {}, "Switch to Essential"),
-          subtitle: t("experience_mode_switch_to_essential_subtitle", {}, "Hide advanced setup surfaces without changing your saved values."),
+          subtitle: t(
+            "experience_mode_switch_to_essential_subtitle",
+            {},
+            "Hide advanced setup surfaces without changing your saved values."
+          ),
           value: t("experience_mode_advanced", {}, "Advanced")
         })}
       </div></div>
@@ -3448,8 +3478,16 @@ export const SettingsScreen = {
           ${this.renderActionRow({
             focusKey: "appearance:settingsUiStyle",
             title: t("appearance_settings_style", {}, "Settings style"),
-            subtitle: t("appearance_settings_style_subtitle", {}, "Choose the layout used by Settings"),
-            value: t(`settings_style_${String(model.theme.settingsUiStyle || "CLASSIC").toLowerCase()}`, {}, String(model.theme.settingsUiStyle || "CLASSIC"))
+            subtitle: t(
+              "appearance_settings_style_subtitle",
+              {},
+              "Choose the layout used by Settings"
+            ),
+            value: t(
+              `settings_style_${String(model.theme.settingsUiStyle || "CLASSIC").toLowerCase()}`,
+              {},
+              String(model.theme.settingsUiStyle || "CLASSIC")
+            )
           })}
           ${this.renderActionRow({
             focusKey: "appearance:font",
@@ -3511,7 +3549,12 @@ export const SettingsScreen = {
     });
     this.actionMap.set("layout:heroCatalogs", () => {
       const catalogSettings = model.homeCatalog || HomeCatalogStore.get();
-      const options = (catalogSettings.order || []).filter((key) => !catalogSettings.disabled?.includes(key)).map((key) => ({ id: key, label: catalogSettings.customTitles?.[key] || key.split("::").pop() || key }));
+      const options = (catalogSettings.order || [])
+        .filter((key) => !catalogSettings.disabled?.includes(key))
+        .map((key) => ({
+          id: key,
+          label: catalogSettings.customTitles?.[key] || key.split("::").pop() || key
+        }));
       this.openMultiChoiceDialog({
         title: t("layout_hero_catalog", {}, "Hero catalogs"),
         options,
@@ -3534,29 +3577,88 @@ export const SettingsScreen = {
         onSelect: (option) => LayoutPreferences.set({ discoverLocation: option.id })
       });
     });
-    this.actionMap.set("layout:classicFocusGradient", () => LayoutPreferences.set({ classicFocusGradientEnabled: !LayoutPreferences.get().classicFocusGradientEnabled }));
-    this.actionMap.set("layout:showFullReleaseDate", () => LayoutPreferences.set({ showFullReleaseDate: !LayoutPreferences.get().showFullReleaseDate }));
-    this.actionMap.set("layout:detail:preferExternalMeta", () => LayoutPreferences.set({ preferExternalMetaAddonDetail: !LayoutPreferences.get().preferExternalMetaAddonDetail }));
-    this.actionMap.set("layout:continueWatchingCardStyle", () => this.openOptionDialog({
-      title: t("layout_cw_card_style", {}, "Continue Watching card style"),
-      options: ["card", "wide", "poster"].map((id) => ({ id, labelKey: `layout_cw_card_style_${id}` })),
-      selectedId: model.layout.continueWatchingCardStyle || "card",
-      returnFocusKey: "layout:continueWatchingCardStyle",
-      onSelect: (option) => LayoutPreferences.set({ continueWatchingCardStyle: option.id })
-    }));
-    const openNumberSetting = (focusKey, titleKey, field, values, fallback) => this.actionMap.set(focusKey, () => this.openOptionDialog({
-      title: t(titleKey, {}, titleKey), options: values.map((value) => ({ id: String(value), label: String(value) })),
-      selectedId: String(model.layout[field] ?? fallback), returnFocusKey: focusKey,
-      onSelect: (option) => LayoutPreferences.set({ [field]: Number(option.id) })
-    }));
-    openNumberSetting("layout:posterWidth", "layout_card_width", "posterCardWidthDp", [96,108,116,126,136,146,156,168], 126);
-    openNumberSetting("layout:posterRadius", "layout_card_radius", "posterCardCornerRadiusDp", [0,4,8,12,16,20,24], 12);
-    openNumberSetting("layout:cardDepthEdge", "settings_card_depth_edge_value", "cardDepthEdgeStrength", [0,10,20,28,40,60,80,100], 28);
-    openNumberSetting("layout:cardDepthSheen", "settings_card_depth_sheen_value", "cardDepthSheenStrength", [0,10,20,40,60,80,100], 10);
-    openNumberSetting("layout:cardDepthCoverage", "settings_card_depth_coverage_value", "cardDepthEdgeCoverage", [0,25,50,75,100], 0);
-    ["Enabled","PostersEnabled","ContinueWatchingEnabled","EpisodeCardsEnabled","CastEnabled","TrailersEnabled"].forEach((suffix) => {
+    this.actionMap.set("layout:classicFocusGradient", () =>
+      LayoutPreferences.set({
+        classicFocusGradientEnabled: !LayoutPreferences.get().classicFocusGradientEnabled
+      })
+    );
+    this.actionMap.set("layout:showFullReleaseDate", () =>
+      LayoutPreferences.set({ showFullReleaseDate: !LayoutPreferences.get().showFullReleaseDate })
+    );
+    this.actionMap.set("layout:detail:preferExternalMeta", () =>
+      LayoutPreferences.set({
+        preferExternalMetaAddonDetail: !LayoutPreferences.get().preferExternalMetaAddonDetail
+      })
+    );
+    this.actionMap.set("layout:continueWatchingCardStyle", () =>
+      this.openOptionDialog({
+        title: t("layout_cw_card_style", {}, "Continue Watching card style"),
+        options: ["card", "wide", "poster"].map((id) => ({
+          id,
+          labelKey: `layout_cw_card_style_${id}`
+        })),
+        selectedId: model.layout.continueWatchingCardStyle || "card",
+        returnFocusKey: "layout:continueWatchingCardStyle",
+        onSelect: (option) => LayoutPreferences.set({ continueWatchingCardStyle: option.id })
+      })
+    );
+    const openNumberSetting = (focusKey, titleKey, field, values, fallback) =>
+      this.actionMap.set(focusKey, () =>
+        this.openOptionDialog({
+          title: t(titleKey, {}, titleKey),
+          options: values.map((value) => ({ id: String(value), label: String(value) })),
+          selectedId: String(model.layout[field] ?? fallback),
+          returnFocusKey: focusKey,
+          onSelect: (option) => LayoutPreferences.set({ [field]: Number(option.id) })
+        })
+      );
+    openNumberSetting(
+      "layout:posterWidth",
+      "layout_card_width",
+      "posterCardWidthDp",
+      [96, 108, 116, 126, 136, 146, 156, 168],
+      126
+    );
+    openNumberSetting(
+      "layout:posterRadius",
+      "layout_card_radius",
+      "posterCardCornerRadiusDp",
+      [0, 4, 8, 12, 16, 20, 24],
+      12
+    );
+    openNumberSetting(
+      "layout:cardDepthEdge",
+      "settings_card_depth_edge_value",
+      "cardDepthEdgeStrength",
+      [0, 10, 20, 28, 40, 60, 80, 100],
+      28
+    );
+    openNumberSetting(
+      "layout:cardDepthSheen",
+      "settings_card_depth_sheen_value",
+      "cardDepthSheenStrength",
+      [0, 10, 20, 40, 60, 80, 100],
+      10
+    );
+    openNumberSetting(
+      "layout:cardDepthCoverage",
+      "settings_card_depth_coverage_value",
+      "cardDepthEdgeCoverage",
+      [0, 25, 50, 75, 100],
+      0
+    );
+    [
+      "Enabled",
+      "PostersEnabled",
+      "ContinueWatchingEnabled",
+      "EpisodeCardsEnabled",
+      "CastEnabled",
+      "TrailersEnabled"
+    ].forEach((suffix) => {
       const field = `cardDepth${suffix}`;
-      this.actionMap.set(`layout:${field}`, () => LayoutPreferences.set({ [field]: !LayoutPreferences.get()[field] }));
+      this.actionMap.set(`layout:${field}`, () =>
+        LayoutPreferences.set({ [field]: !LayoutPreferences.get()[field] })
+      );
     });
     this.actionMap.set("layout:hideUnreleased", () => {
       LayoutPreferences.set({
@@ -3749,7 +3851,11 @@ export const SettingsScreen = {
               ? this.renderToggleRow({
                   focusKey: "layout:classicFocusGradient",
                   title: t("layout_classic_focus_gradient", {}, "Classic focus gradient"),
-                  subtitle: t("layout_classic_focus_gradient_sub", {}, "Show the focus gradient in Classic layout."),
+                  subtitle: t(
+                    "layout_classic_focus_gradient_sub",
+                    {},
+                    "Show the focus gradient in Classic layout."
+                  ),
                   checked: Boolean(model.layout.classicFocusGradientEnabled)
                 })
               : ""
@@ -3759,7 +3865,11 @@ export const SettingsScreen = {
               ? this.renderActionRow({
                   focusKey: "layout:heroCatalogs",
                   title: t("layout_hero_catalog", {}, "Hero catalogs"),
-                  subtitle: t("layout_hero_catalog_sub", {}, "Choose catalogs used by the Hero section."),
+                  subtitle: t(
+                    "layout_hero_catalog_sub",
+                    {},
+                    "Choose catalogs used by the Hero section."
+                  ),
                   value: String(model.layout.heroCatalogKeys?.length || 0)
                 })
               : ""
@@ -3806,7 +3916,12 @@ export const SettingsScreen = {
           focusKey: "layout:searchDiscover",
           title: t("layout_discover_location_action", {}, "Discover location"),
           subtitle: t("settings.layout.searchDiscover.subtitle"),
-          value: model.layout.discoverLocation === "in_sidebar" ? t("layout_discover_location_in_sidebar") : model.layout.discoverLocation === "off" ? t("common.off", {}, "Off") : t("layout_discover_location_in_search")
+          value:
+            model.layout.discoverLocation === "in_sidebar"
+              ? t("layout_discover_location_in_sidebar")
+              : model.layout.discoverLocation === "off"
+                ? t("common.off", {}, "Off")
+                : t("layout_discover_location_in_search")
         })}
         ${!isModernLayout ? this.renderToggleRow({ focusKey: "layout:classicFocusGradient", title: t("layout_classic_focus_gradient"), subtitle: t("layout_classic_focus_gradient_sub"), checked: Boolean(model.layout.classicFocusGradientEnabled) }) : ""}
         ${
@@ -4007,12 +4122,30 @@ export const SettingsScreen = {
         ${this.renderActionRow({ focusKey: "layout:posterWidth", title: t("layout_card_width", {}, "Card width"), subtitle: t("layout_section_card_style_desc", {}, "Adjust poster card width"), value: String(model.layout.posterCardWidthDp) })}
         ${this.renderActionRow({ focusKey: "layout:posterRadius", title: t("layout_card_radius", {}, "Card corner radius"), subtitle: t("layout_section_card_style_desc", {}, "Adjust poster card corner radius"), value: String(model.layout.posterCardCornerRadiusDp) })}
         ${this.renderToggleRow({ focusKey: "layout:cardDepthEnabled", title: t("settings_card_depth_enabled", {}, "Enable depth effect"), subtitle: t("settings_card_depth_description", {}, "Add edge light and sheen to image cards"), checked: Boolean(model.layout.cardDepthEnabled) })}
-        ${model.layout.cardDepthEnabled ? `
+        ${
+          model.layout.cardDepthEnabled
+            ? `
           ${this.renderActionRow({ focusKey: "layout:cardDepthEdge", title: t("settings_card_depth_edge_value", {}, "Edge glow"), value: `${model.layout.cardDepthEdgeStrength}%` })}
           ${this.renderActionRow({ focusKey: "layout:cardDepthSheen", title: t("settings_card_depth_sheen_value", {}, "Sheen"), value: `${model.layout.cardDepthSheenStrength}%` })}
           ${this.renderActionRow({ focusKey: "layout:cardDepthCoverage", title: t("settings_card_depth_coverage_value", {}, "Edge coverage"), value: `${model.layout.cardDepthEdgeCoverage}%` })}
-          ${[["PostersEnabled","settings_card_depth_surface_posters"],["ContinueWatchingEnabled","settings_card_depth_surface_continue_watching"],["EpisodeCardsEnabled","settings_card_depth_surface_episodes"],["CastEnabled","settings_card_depth_surface_cast"],["TrailersEnabled","settings_card_depth_surface_trailers"]].map(([suffix,key]) => this.renderToggleRow({ focusKey: `layout:cardDepth${suffix}`, title: t(key, {}, key), checked: model.layout[`cardDepth${suffix}`] !== false })).join("")}
-        ` : ""}
+          ${[
+            ["PostersEnabled", "settings_card_depth_surface_posters"],
+            ["ContinueWatchingEnabled", "settings_card_depth_surface_continue_watching"],
+            ["EpisodeCardsEnabled", "settings_card_depth_surface_episodes"],
+            ["CastEnabled", "settings_card_depth_surface_cast"],
+            ["TrailersEnabled", "settings_card_depth_surface_trailers"]
+          ]
+            .map(([suffix, key]) =>
+              this.renderToggleRow({
+                focusKey: `layout:cardDepth${suffix}`,
+                title: t(key, {}, key),
+                checked: model.layout[`cardDepth${suffix}`] !== false
+              })
+            )
+            .join("")}
+        `
+            : ""
+        }
       </div>`;
 
     return `
@@ -4097,16 +4230,20 @@ export const SettingsScreen = {
             ),
             leadingIcon: "grid_view"
           })}
-          ${ExperienceModeStore.isEssential() ? "" : this.renderActionRow({
-            focusKey: "contentDiscovery:plugins",
-            title: t("plugin_title", {}, "Plugins"),
-            subtitle: t(
-              "settings.contentDiscovery.pluginsSubtitle",
-              {},
-              "Manage repositories and stream providers"
-            ),
-            leadingIcon: "build"
-          })}
+          ${
+            ExperienceModeStore.isEssential()
+              ? ""
+              : this.renderActionRow({
+                  focusKey: "contentDiscovery:plugins",
+                  title: t("plugin_title", {}, "Plugins"),
+                  subtitle: t(
+                    "settings.contentDiscovery.pluginsSubtitle",
+                    {},
+                    "Manage repositories and stream providers"
+                  ),
+                  leadingIcon: "build"
+                })
+          }
         </div>
       </div>
     `;
@@ -4504,11 +4641,18 @@ export const SettingsScreen = {
                 this.renderActionRow({
                   focusKey: `integration:debrid:key:${provider.id}`,
                   title: provider.displayName,
-                  subtitle: t(
-                    "settings.integration.debrid.providerDescription",
-                    { provider: provider.displayName },
-                    `Connect your ${provider.displayName} account.`
-                  ),
+                  subtitle:
+                    provider.authMethod === DEBRID_AUTH_METHODS.DEVICE_CODE
+                      ? t(
+                          "debrid_provider_device_description",
+                          { provider: provider.displayName },
+                          `Link your ${provider.displayName} account in the browser.`
+                        )
+                      : t(
+                          "settings.integration.debrid.providerDescription",
+                          { provider: provider.displayName },
+                          `Connect your ${provider.displayName} account.`
+                        ),
                   value: maskValue(
                     provider.authMethod === DEBRID_AUTH_METHODS.DEVICE_CODE
                       ? ""
@@ -5413,25 +5557,39 @@ export const SettingsScreen = {
     this.actionMap.set("playback:trailer", () => {
       PlayerSettingsStore.set({ trailerAutoplay: !PlayerSettingsStore.get().trailerAutoplay });
     });
-    this.actionMap.set("playback:trailerDelay", () => this.openOptionDialog({
-      title: t("audio_trailer_delay", {}, "Trailer delay"),
-      options: Array.from({ length: 16 }, (_, value) => ({ id: String(value), label: `${value}s` })),
-      selectedId: String(model.player.trailerDelaySeconds ?? 7),
-      returnFocusKey: "playback:trailerDelay",
-      onSelect: (option) => PlayerSettingsStore.set({ trailerDelaySeconds: Number(option.id) })
-    }));
+    this.actionMap.set("playback:trailerDelay", () =>
+      this.openOptionDialog({
+        title: t("audio_trailer_delay", {}, "Trailer delay"),
+        options: Array.from({ length: 16 }, (_, value) => ({
+          id: String(value),
+          label: `${value}s`
+        })),
+        selectedId: String(model.player.trailerDelaySeconds ?? 7),
+        returnFocusKey: "playback:trailerDelay",
+        onSelect: (option) => PlayerSettingsStore.set({ trailerDelaySeconds: Number(option.id) })
+      })
+    );
     this.actionMap.set("playback:skipIntro", () => {
       PlayerSettingsStore.set({ skipIntroEnabled: !PlayerSettingsStore.get().skipIntroEnabled });
     });
-    const togglePlayerSetting = (focusKey, field) => this.actionMap.set(focusKey, () => PlayerSettingsStore.set({ [field]: !PlayerSettingsStore.get()[field] }));
+    const togglePlayerSetting = (focusKey, field) =>
+      this.actionMap.set(focusKey, () =>
+        PlayerSettingsStore.set({ [field]: !PlayerSettingsStore.get()[field] })
+      );
     togglePlayerSetting("playback:loadingOverlay", "loadingOverlayEnabled");
     togglePlayerSetting("playback:loadingStatus", "showPlayerLoadingStatus");
     togglePlayerSetting("playback:pauseOverlay", "pauseOverlayEnabled");
     togglePlayerSetting("playback:parentalGuide", "parentalGuideEnabled");
-    ["intro", "recap", "outro"].forEach((type) => this.actionMap.set(`playback:autoSkip:${type}`, () => {
-      const current = PlayerSettingsStore.get().autoSkipSegmentTypes || [];
-      PlayerSettingsStore.set({ autoSkipSegmentTypes: current.includes(type) ? current.filter((entry) => entry !== type) : [...current, type] });
-    }));
+    ["intro", "recap", "outro"].forEach((type) =>
+      this.actionMap.set(`playback:autoSkip:${type}`, () => {
+        const current = PlayerSettingsStore.get().autoSkipSegmentTypes || [];
+        PlayerSettingsStore.set({
+          autoSkipSegmentTypes: current.includes(type)
+            ? current.filter((entry) => entry !== type)
+            : [...current, type]
+        });
+      })
+    );
     this.actionMap.set("playback:osdClock", () => {
       PlayerSettingsStore.set({
         osdClockEnabled: !PlayerSettingsStore.get().osdClockEnabled
@@ -5631,8 +5789,7 @@ export const SettingsScreen = {
             : !enabled && autoPreferred && currentStartupMode === "PREFERRED_ONLY"
               ? "ALL_SUBTITLES"
               : currentStartupMode,
-        addonSubtitleStartupModeAutoPreferred:
-          enabled && currentStartupMode === "ALL_SUBTITLES",
+        addonSubtitleStartupModeAutoPreferred: enabled && currentStartupMode === "ALL_SUBTITLES",
         subtitleStyle: {
           ...currentSettings.subtitleStyle,
           showOnlyPreferredLanguages: enabled
@@ -5673,19 +5830,33 @@ export const SettingsScreen = {
         returnFocusKey: "playback:secondarySubtitleLanguage",
         dialogClassName: "settings-language-dialog",
         optionRenderer: "subtitle-language",
-        onSelect: (option) => PlayerSettingsStore.set({ secondarySubtitleLanguage: option.id, subtitleStyle: { ...currentSettings.subtitleStyle, secondaryPreferredLanguage: option.id } })
+        onSelect: (option) =>
+          PlayerSettingsStore.set({
+            secondarySubtitleLanguage: option.id,
+            subtitleStyle: {
+              ...currentSettings.subtitleStyle,
+              secondaryPreferredLanguage: option.id
+            }
+          })
       });
     });
-    this.actionMap.set("playback:subtitleStartupMode", () => this.openOptionDialog({
-      title: t("sub_startup_mode_title", {}, "Subtitle startup mode"),
-      options: [{ id: "FAST_STARTUP", labelKey: "sub_startup_mode_fast" }, { id: "PREFERRED_ONLY", labelKey: "sub_startup_mode_preferred" }, { id: "ALL_SUBTITLES", labelKey: "sub_startup_mode_all" }],
-      selectedId: model.player.addonSubtitleStartupMode || "ALL_SUBTITLES",
-      returnFocusKey: "playback:subtitleStartupMode",
-      onSelect: (option) => PlayerSettingsStore.set({
-        addonSubtitleStartupMode: option.id,
-        addonSubtitleStartupModeAutoPreferred: false
+    this.actionMap.set("playback:subtitleStartupMode", () =>
+      this.openOptionDialog({
+        title: t("sub_startup_mode_title", {}, "Subtitle startup mode"),
+        options: [
+          { id: "FAST_STARTUP", labelKey: "sub_startup_mode_fast" },
+          { id: "PREFERRED_ONLY", labelKey: "sub_startup_mode_preferred" },
+          { id: "ALL_SUBTITLES", labelKey: "sub_startup_mode_all" }
+        ],
+        selectedId: model.player.addonSubtitleStartupMode || "ALL_SUBTITLES",
+        returnFocusKey: "playback:subtitleStartupMode",
+        onSelect: (option) =>
+          PlayerSettingsStore.set({
+            addonSubtitleStartupMode: option.id,
+            addonSubtitleStartupModeAutoPreferred: false
+          })
       })
-    }));
+    );
     this.actionMap.set("playback:renderMode", () => {
       this.openOptionDialog({
         title: t("settings.dialogs.subtitleRenderMode"),
@@ -5748,13 +5919,20 @@ export const SettingsScreen = {
         }
       });
     });
-    this.actionMap.set("playback:subtitleBackgroundColor", () => this.openOptionDialog({
-      title: t("sub_bg_color", {}, "Subtitle background color"),
-      options: [{ id: "#00000000", labelKey: "common_off" }, { id: "#00000080", label: "50%" }, { id: "#000000CC", label: "80%" }, { id: "#000000", label: "100%" }],
-      selectedId: PlayerSettingsStore.get().subtitleStyle?.backgroundColor || "#00000000",
-      returnFocusKey: "playback:subtitleBackgroundColor",
-      onSelect: (option) => updateSubtitleStyle({ backgroundColor: option.id })
-    }));
+    this.actionMap.set("playback:subtitleBackgroundColor", () =>
+      this.openOptionDialog({
+        title: t("sub_bg_color", {}, "Subtitle background color"),
+        options: [
+          { id: "#00000000", labelKey: "common_off" },
+          { id: "#00000080", label: "50%" },
+          { id: "#000000CC", label: "80%" },
+          { id: "#000000", label: "100%" }
+        ],
+        selectedId: PlayerSettingsStore.get().subtitleStyle?.backgroundColor || "#00000000",
+        returnFocusKey: "playback:subtitleBackgroundColor",
+        onSelect: (option) => updateSubtitleStyle({ backgroundColor: option.id })
+      })
+    );
     this.actionMap.set("playback:subtitleOutline", () => {
       updateSubtitleStyle({
         outlineEnabled: !PlayerSettingsStore.get().subtitleStyle?.outlineEnabled
@@ -5822,21 +6000,34 @@ export const SettingsScreen = {
           ${this.renderActionRow({
             focusKey: "playback:autoStreamMode",
             title: t("essential_stream_selection", {}, "Stream selection"),
-            subtitle: t("essential_stream_selection_subtitle", {}, "Choose streams manually or play the first available stream."),
-            value: String(model.player.streamAutoPlayMode || "MANUAL") === "FIRST_STREAM"
-              ? t("stream_auto_play_first_stream", {}, "First stream")
-              : t("stream_auto_play_manual_short", {}, "Manual")
+            subtitle: t(
+              "essential_stream_selection_subtitle",
+              {},
+              "Choose streams manually or play the first available stream."
+            ),
+            value:
+              String(model.player.streamAutoPlayMode || "MANUAL") === "FIRST_STREAM"
+                ? t("stream_auto_play_first_stream", {}, "First stream")
+                : t("stream_auto_play_manual_short", {}, "Manual")
           })}
           ${this.renderToggleRow({
             focusKey: "playback:autoplay",
             title: t("essential_autoplay_next_episode", {}, "Autoplay next episode"),
-            subtitle: t("essential_autoplay_next_episode_subtitle", {}, "Automatically continue to the next episode."),
+            subtitle: t(
+              "essential_autoplay_next_episode_subtitle",
+              {},
+              "Automatically continue to the next episode."
+            ),
             checked: Boolean(model.player.autoplayNextEpisode)
           })}
           ${this.renderToggleRow({
             focusKey: "playback:p2pEnabled",
             title: t("essential_p2p_streams", {}, "P2P streams"),
-            subtitle: t("essential_p2p_streams_subtitle", {}, "Allow peer-to-peer stream playback."),
+            subtitle: t(
+              "essential_p2p_streams_subtitle",
+              {},
+              "Allow peer-to-peer stream playback."
+            ),
             checked: Boolean(torrentSettings.p2pEnabled)
           })}
         </div></div>
@@ -5845,19 +6036,31 @@ export const SettingsScreen = {
           ${this.renderActionRow({
             focusKey: "playback:subtitleLanguage",
             title: t("essential_subtitle_language", {}, "Subtitle language"),
-            subtitle: t("essential_subtitle_language_subtitle", {}, "Choose your preferred subtitle language."),
+            subtitle: t(
+              "essential_subtitle_language_subtitle",
+              {},
+              "Choose your preferred subtitle language."
+            ),
             value: preferredSubtitle
           })}
           ${this.renderToggleRow({
             focusKey: "playback:useForcedSubtitles",
             title: t("sub_use_forced_subtitles", {}, "Use forced subtitles"),
-            subtitle: t("sub_use_forced_subtitles_desc", {}, "Prefer forced subtitles when available."),
+            subtitle: t(
+              "sub_use_forced_subtitles_desc",
+              {},
+              "Prefer forced subtitles when available."
+            ),
             checked: Boolean(model.player.subtitleStyle?.useForcedSubtitles)
           })}
           ${this.renderActionRow({
             focusKey: "playback:audioLanguage",
             title: t("essential_audio_language", {}, "Audio language"),
-            subtitle: t("essential_audio_language_subtitle", {}, "Choose your preferred audio language."),
+            subtitle: t(
+              "essential_audio_language_subtitle",
+              {},
+              "Choose your preferred audio language."
+            ),
             value: String(model.player.preferredAudioLanguage || "")
           })}
         </div></div>`;
@@ -6830,7 +7033,13 @@ export const SettingsScreen = {
           ${this.renderActionRow({
             focusKey: "about:checkUpdates",
             title: t("about_check_updates", {}, "Check for updates"),
-            subtitle: this.aboutUpdateStatus || t("about_check_updates_subtitle", {}, "Check the latest release for manual installation")
+            subtitle:
+              this.aboutUpdateStatus ||
+              t(
+                "about_check_updates_subtitle",
+                {},
+                "Check the latest release for manual installation"
+              )
           })}
           ${this.renderActionRow({
             focusKey: "about:privacy",
@@ -6908,7 +7117,9 @@ export const SettingsScreen = {
 
     const shell = this.container.querySelector(".settings-shell");
     if (shell) {
-      shell.dataset.settingsStyle = String(this.model.theme.settingsUiStyle || "CLASSIC").toLowerCase();
+      shell.dataset.settingsStyle = String(
+        this.model.theme.settingsUiStyle || "CLASSIC"
+      ).toLowerCase();
       shell.classList.toggle("settings-route-enter", Boolean(this.settingsRouteEnterPending));
       if (this.settingsRouteEnterPending) {
         void shell.offsetWidth;

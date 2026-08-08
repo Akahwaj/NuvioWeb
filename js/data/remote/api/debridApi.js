@@ -11,12 +11,14 @@ function joinUrl(baseUrl, path) {
 async function requestJson(baseUrl, path, options = {}) {
   let response;
   try {
-    response = await fetch(joinUrl(baseUrl, path), {
+    const url = joinUrl(baseUrl, path);
+    const fetchOptions = {
       ...options,
       headers: {
         ...(options.headers || {})
       }
-    });
+    };
+    response = (await fetchViaWebOsDebridAuthProxy(url, fetchOptions)) || (await fetch(url, fetchOptions));
   } catch (error) {
     return {
       ok: false,
@@ -196,6 +198,31 @@ export const DebridApi = {
     });
   },
 
+  async torboxListCloudItems(apiKey, path) {
+    return requestJson(TORBOX_BASE_URL, path, { headers: authHeaders(apiKey) });
+  },
+
+  async torboxRequestCloudDownloadLink(apiKey, itemType, itemId, fileId) {
+    const type = String(itemType || "");
+    const config =
+      type === "Usenet"
+        ? { path: "v1/api/usenet/requestdl", idKey: "usenet_id" }
+        : type === "WebDownload"
+          ? { path: "v1/api/webdl/requestdl", idKey: "web_id" }
+          : { path: "v1/api/torrents/requestdl", idKey: "torrent_id" };
+    const query = new URLSearchParams({
+      token: String(apiKey || "").trim(),
+      [config.idKey]: String(itemId),
+      zip_link: "false",
+      redirect: "false",
+      append_name: "false"
+    });
+    if (fileId != null) query.set("file_id", String(fileId));
+    return requestJson(TORBOX_BASE_URL, `${config.path}?${query.toString()}`, {
+      headers: authHeaders(apiKey)
+    });
+  },
+
   async premiumizeDirectDownload(apiKey, source) {
     return requestJson(PREMIUMIZE_BASE_URL, "api/transfer/directdl", {
       method: "POST",
@@ -218,6 +245,19 @@ export const DebridApi = {
       method: "POST",
       headers: authHeaders(apiKey),
       body
+    });
+  },
+
+  async premiumizeListCloudItems(apiKey) {
+    return requestJson(PREMIUMIZE_BASE_URL, "api/item/listall", {
+      headers: authHeaders(apiKey)
+    });
+  },
+
+  async premiumizeCloudItemDetails(apiKey, itemId) {
+    const query = new URLSearchParams({ id: String(itemId || "") });
+    return requestJson(PREMIUMIZE_BASE_URL, `api/item/details?${query.toString()}`, {
+      headers: authHeaders(apiKey)
     });
   },
 

@@ -68,7 +68,7 @@
         },
         {
           "name": "safeHttpProxy",
-          "description": "Proxy allowlisted account-authentication requests for legacy webOS",
+          "description": "Proxy allowlisted account and cloud-library requests for legacy webOS",
           "public": true
         }
       ]

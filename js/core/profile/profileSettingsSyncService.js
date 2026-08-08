@@ -39,6 +39,7 @@ const CACHE_KEY = "profileSettingsSyncCache";
 const EXCLUDED_PROFILE_KEYS = {
   layout_settings: new Set(["search_discover_enabled"]),
   player_settings: new Set(["audio_amplification_db", "persist_audio_amplification"]),
+  mdblist_settings: new Set(["mdblist_api_key"]),
   debrid_settings: new Set([
     "torbox_api_key",
     "premiumize_api_key",
@@ -46,8 +47,19 @@ const EXCLUDED_PROFILE_KEYS = {
     "stream_badges_enabled",
     "stream_show_badges",
     "show_stream_badges"
-  ])
+  ]),
+  animeskip_settings: new Set(["animeskip_client_id"])
 };
+
+export function profileSettingsExcludedKeys(featureName) {
+  return Array.from(EXCLUDED_PROFILE_KEYS[String(featureName || "").trim()] || []).sort();
+}
+
+export function withoutExcludedProfileSettingsKeys(featureName, featurePayload = {}) {
+  const sanitized = cloneValue(featurePayload) || {};
+  EXCLUDED_PROFILE_KEYS[featureName]?.forEach((key) => delete sanitized[key]);
+  return sanitized;
+}
 
 function resolveProfileId(profileId = null) {
   const raw = Number(profileId ?? ProfileManager.getActiveProfileId() ?? 1);
@@ -121,7 +133,10 @@ function shouldSerializeLayoutStringArrayAsString(featureName = "", keyName = ""
 
 export function encodePreferenceValue(value, keyName = "", featureName = "") {
   if (isEncodedPreferenceValue(value)) {
-    if (shouldSerializeLayoutStringArrayAsString(featureName, keyName) && value.type === "string_set") {
+    if (
+      shouldSerializeLayoutStringArrayAsString(featureName, keyName) &&
+      value.type === "string_set"
+    ) {
       const normalized = Array.isArray(value.value)
         ? value.value.map((entry) => String(entry || "").trim()).filter(Boolean)
         : [];
@@ -416,7 +431,9 @@ function normalizeHomeLayoutForWeb(value) {
 }
 
 function normalizeDiscoverLocationForAndroid(value) {
-  const normalized = String(value || "").trim().toUpperCase();
+  const normalized = String(value || "")
+    .trim()
+    .toUpperCase();
   return ["IN_SEARCH", "IN_SIDEBAR", "OFF"].includes(normalized)
     ? normalized
     : value === false
@@ -568,10 +585,12 @@ function androidColorIntToHex(value, fallback = "#ffffff") {
 }
 
 function cssColorToAndroidColorInt(value, fallback = "#00000000") {
-  const match = String(value || fallback).trim().match(/^#([0-9a-f]{6})([0-9a-f]{2})?$/i);
+  const match = String(value || fallback)
+    .trim()
+    .match(/^#([0-9a-f]{6})([0-9a-f]{2})?$/i);
   const rgb = match?.[1] || "000000";
   const alpha = match?.[2] || "ff";
-  return (parseInt(`${alpha}${rgb}`, 16) | 0);
+  return parseInt(`${alpha}${rgb}`, 16) | 0;
 }
 
 function androidColorIntToCss(value, fallback = "#00000000") {
@@ -608,7 +627,8 @@ const FEATURE_ADAPTERS = {
       if (booleanOrNull(raw.amoled_surfaces_mode) != null) {
         projected.amoled_surfaces_mode = Boolean(raw.amoled_surfaces_mode);
       }
-      if (stringOrNull(raw.settings_ui_style)) projected.settings_ui_style = String(raw.settings_ui_style).toUpperCase();
+      if (stringOrNull(raw.settings_ui_style))
+        projected.settings_ui_style = String(raw.settings_ui_style).toUpperCase();
       return projected;
     },
     import(profileId, rawFeature = {}) {
@@ -626,7 +646,8 @@ const FEATURE_ADAPTERS = {
       if (booleanOrNull(raw.amoled_surfaces_mode) != null) {
         partial.amoledSurfacesMode = Boolean(raw.amoled_surfaces_mode);
       }
-      if (stringOrNull(raw.settings_ui_style)) partial.settingsUiStyle = String(raw.settings_ui_style).toUpperCase();
+      if (stringOrNull(raw.settings_ui_style))
+        partial.settingsUiStyle = String(raw.settings_ui_style).toUpperCase();
       if (!Object.keys(partial).length) {
         return false;
       }
@@ -655,7 +676,7 @@ const FEATURE_ADAPTERS = {
         focused_poster_backdrop_expand_enabled: Boolean(layout.focusedPosterBackdropExpandEnabled),
         focused_poster_backdrop_expand_delay_seconds: Math.max(
           0,
-          Number(layout.focusedPosterBackdropExpandDelaySeconds ?? 3) || 0
+          Math.trunc(Number(layout.focusedPosterBackdropExpandDelaySeconds ?? 3) || 0)
         ),
         focused_poster_backdrop_trailer_enabled: Boolean(
           layout.focusedPosterBackdropTrailerEnabled
@@ -664,25 +685,39 @@ const FEATURE_ADAPTERS = {
         focused_poster_backdrop_trailer_playback_target: normalizeTrailerTargetForAndroid(
           layout.focusedPosterBackdropTrailerPlaybackTarget
         ),
-        poster_card_width_dp: Math.max(72, Number(layout.posterCardWidthDp ?? 126) || 126),
+        poster_card_width_dp: Math.max(
+          72,
+          Math.trunc(Number(layout.posterCardWidthDp ?? 126) || 126)
+        ),
         poster_card_height_dp: Math.max(
           108,
-          Math.trunc((Number(layout.posterCardWidthDp ?? 126) || 126) * 1.5)
+          Math.trunc((Math.trunc(Number(layout.posterCardWidthDp ?? 126) || 126) * 3) / 2)
         ),
         poster_card_corner_radius_dp: Math.max(
           0,
-          Number(layout.posterCardCornerRadiusDp ?? 12) || 12
+          Math.trunc(Number(layout.posterCardCornerRadiusDp ?? 12) || 12)
         ),
         card_depth_enabled: Boolean(layout.cardDepthEnabled),
-        card_depth_edge_strength: Number(layout.cardDepthEdgeStrength ?? 28),
-        card_depth_sheen_strength: Number(layout.cardDepthSheenStrength ?? 10),
-        card_depth_edge_coverage: Number(layout.cardDepthEdgeCoverage ?? 0),
+        card_depth_edge_strength: Math.min(
+          100,
+          Math.max(0, Math.trunc(Number(layout.cardDepthEdgeStrength ?? 28) || 0))
+        ),
+        card_depth_sheen_strength: Math.min(
+          100,
+          Math.max(0, Math.trunc(Number(layout.cardDepthSheenStrength ?? 10) || 0))
+        ),
+        card_depth_edge_coverage: Math.min(
+          100,
+          Math.max(0, Math.trunc(Number(layout.cardDepthEdgeCoverage ?? 0) || 0))
+        ),
         card_depth_posters_enabled: layout.cardDepthPostersEnabled !== false,
         card_depth_continue_watching_enabled: layout.cardDepthContinueWatchingEnabled !== false,
         card_depth_episode_cards_enabled: layout.cardDepthEpisodeCardsEnabled !== false,
         card_depth_cast_enabled: layout.cardDepthCastEnabled !== false,
         card_depth_trailers_enabled: layout.cardDepthTrailersEnabled !== false,
-        continue_watching_card_style: String(layout.continueWatchingCardStyle || "card").toUpperCase(),
+        continue_watching_card_style: String(
+          layout.continueWatchingCardStyle || "card"
+        ).toUpperCase(),
         detail_page_trailer_button_enabled: Boolean(layout.detailPageTrailerButtonEnabled),
         prefer_external_meta_addon_detail: layout.preferExternalMetaAddonDetail !== false,
         show_full_release_date: layout.showFullReleaseDate !== false,
@@ -727,8 +762,15 @@ const FEATURE_ADAPTERS = {
         "use_episode_thumbnails_in_cw",
         "blur_continue_watching_next_up",
         "show_unaired_next_up",
-        "next_up_from_furthest_episode"
-        ,"card_depth_enabled","card_depth_posters_enabled","card_depth_continue_watching_enabled","card_depth_episode_cards_enabled","card_depth_cast_enabled","card_depth_trailers_enabled","prefer_external_meta_addon_detail","show_full_release_date"
+        "next_up_from_furthest_episode",
+        "card_depth_enabled",
+        "card_depth_posters_enabled",
+        "card_depth_continue_watching_enabled",
+        "card_depth_episode_cards_enabled",
+        "card_depth_cast_enabled",
+        "card_depth_trailers_enabled",
+        "prefer_external_meta_addon_detail",
+        "show_full_release_date"
       ].forEach((key) => {
         if (booleanOrNull(raw[key]) != null) {
           projected[key] = Boolean(raw[key]);
@@ -756,9 +798,18 @@ const FEATURE_ADAPTERS = {
           raw.continue_watching_sort_mode
         );
       }
-      if (stringOrNull(raw.continue_watching_card_style)) projected.continue_watching_card_style = String(raw.continue_watching_card_style).toUpperCase();
-      if (Array.isArray(raw.hero_catalog_keys)) projected.hero_catalog_keys = raw.hero_catalog_keys.map(String).filter(Boolean);
-      ["card_depth_edge_strength", "card_depth_sheen_strength", "card_depth_edge_coverage"].forEach((key) => { if (numberOrNull(raw[key]) != null) projected[key] = Math.min(100, Math.max(0, Math.trunc(Number(raw[key])))); });
+      if (stringOrNull(raw.continue_watching_card_style))
+        projected.continue_watching_card_style = String(
+          raw.continue_watching_card_style
+        ).toUpperCase();
+      if (Array.isArray(raw.hero_catalog_keys))
+        projected.hero_catalog_keys = raw.hero_catalog_keys.map(String).filter(Boolean);
+      ["card_depth_edge_strength", "card_depth_sheen_strength", "card_depth_edge_coverage"].forEach(
+        (key) => {
+          if (numberOrNull(raw[key]) != null)
+            projected[key] = Math.min(100, Math.max(0, Math.trunc(Number(raw[key]))));
+        }
+      );
       if (numberOrNull(raw.poster_card_width_dp) != null) {
         projected.poster_card_width_dp = Math.max(72, Math.trunc(Number(raw.poster_card_width_dp)));
       }
@@ -822,9 +873,12 @@ const FEATURE_ADAPTERS = {
       if (booleanOrNull(raw.catalog_type_suffix_enabled) != null) {
         partial.catalogTypeSuffixEnabled = Boolean(raw.catalog_type_suffix_enabled);
       }
-      if (booleanOrNull(raw.classic_focus_gradient_enabled) != null) partial.classicFocusGradientEnabled = Boolean(raw.classic_focus_gradient_enabled);
-      if (Array.isArray(raw.hero_catalog_keys)) partial.heroCatalogKeys = raw.hero_catalog_keys.map(String).filter(Boolean);
-      if (stringOrNull(raw.continue_watching_card_style)) partial.continueWatchingCardStyle = String(raw.continue_watching_card_style).toLowerCase();
+      if (booleanOrNull(raw.classic_focus_gradient_enabled) != null)
+        partial.classicFocusGradientEnabled = Boolean(raw.classic_focus_gradient_enabled);
+      if (Array.isArray(raw.hero_catalog_keys))
+        partial.heroCatalogKeys = raw.hero_catalog_keys.map(String).filter(Boolean);
+      if (stringOrNull(raw.continue_watching_card_style))
+        partial.continueWatchingCardStyle = String(raw.continue_watching_card_style).toLowerCase();
       if (booleanOrNull(raw.focused_poster_backdrop_expand_enabled) != null) {
         partial.focusedPosterBackdropExpandEnabled = Boolean(
           raw.focused_poster_backdrop_expand_enabled
@@ -861,19 +915,29 @@ const FEATURE_ADAPTERS = {
         );
       }
       if (booleanOrNull(raw.fast_horizontal_navigation_enabled) != null) {
-        partial.fastHorizontalNavigationEnabled = Boolean(
-          raw.fast_horizontal_navigation_enabled
-        );
+        partial.fastHorizontalNavigationEnabled = Boolean(raw.fast_horizontal_navigation_enabled);
       }
       const layoutBooleanFields = {
-        card_depth_enabled: "cardDepthEnabled", card_depth_posters_enabled: "cardDepthPostersEnabled",
-        card_depth_continue_watching_enabled: "cardDepthContinueWatchingEnabled", card_depth_episode_cards_enabled: "cardDepthEpisodeCardsEnabled",
-        card_depth_cast_enabled: "cardDepthCastEnabled", card_depth_trailers_enabled: "cardDepthTrailersEnabled",
-        prefer_external_meta_addon_detail: "preferExternalMetaAddonDetail", show_full_release_date: "showFullReleaseDate"
+        card_depth_enabled: "cardDepthEnabled",
+        card_depth_posters_enabled: "cardDepthPostersEnabled",
+        card_depth_continue_watching_enabled: "cardDepthContinueWatchingEnabled",
+        card_depth_episode_cards_enabled: "cardDepthEpisodeCardsEnabled",
+        card_depth_cast_enabled: "cardDepthCastEnabled",
+        card_depth_trailers_enabled: "cardDepthTrailersEnabled",
+        prefer_external_meta_addon_detail: "preferExternalMetaAddonDetail",
+        show_full_release_date: "showFullReleaseDate"
       };
-      Object.entries(layoutBooleanFields).forEach(([key, field]) => { if (booleanOrNull(raw[key]) != null) partial[field] = Boolean(raw[key]); });
-      const layoutNumberFields = { card_depth_edge_strength: "cardDepthEdgeStrength", card_depth_sheen_strength: "cardDepthSheenStrength", card_depth_edge_coverage: "cardDepthEdgeCoverage" };
-      Object.entries(layoutNumberFields).forEach(([key, field]) => { if (numberOrNull(raw[key]) != null) partial[field] = Number(raw[key]); });
+      Object.entries(layoutBooleanFields).forEach(([key, field]) => {
+        if (booleanOrNull(raw[key]) != null) partial[field] = Boolean(raw[key]);
+      });
+      const layoutNumberFields = {
+        card_depth_edge_strength: "cardDepthEdgeStrength",
+        card_depth_sheen_strength: "cardDepthSheenStrength",
+        card_depth_edge_coverage: "cardDepthEdgeCoverage"
+      };
+      Object.entries(layoutNumberFields).forEach(([key, field]) => {
+        if (numberOrNull(raw[key]) != null) partial[field] = Number(raw[key]);
+      });
       if (booleanOrNull(raw.detail_page_trailer_button_enabled) != null) {
         partial.detailPageTrailerButtonEnabled = Boolean(raw.detail_page_trailer_button_enabled);
       }
@@ -917,7 +981,9 @@ const FEATURE_ADAPTERS = {
     },
     project(rawFeature = {}) {
       const raw = normalizeFeaturePayload(rawFeature);
-      const mode = String(raw.mode || "").trim().toUpperCase();
+      const mode = String(raw.mode || "")
+        .trim()
+        .toUpperCase();
       return {
         ...(mode === "ESSENTIAL" || mode === "ADVANCED" ? { mode } : {}),
         ...(booleanOrNull(raw.addon_setup_skipped) != null
@@ -961,7 +1027,9 @@ const FEATURE_ADAPTERS = {
         ),
         subtitle_bold: Boolean(settings.subtitleStyle?.bold),
         subtitle_text_color: hexToAndroidColorInt(settings.subtitleStyle?.textColor, "#ffffff"),
-        subtitle_background_color: cssColorToAndroidColorInt(settings.subtitleStyle?.backgroundColor),
+        subtitle_background_color: cssColorToAndroidColorInt(
+          settings.subtitleStyle?.backgroundColor
+        ),
         subtitle_outline_enabled: settings.subtitleStyle?.outlineEnabled !== false,
         subtitle_outline_color: hexToAndroidColorInt(
           settings.subtitleStyle?.outlineColor,
@@ -975,7 +1043,9 @@ const FEATURE_ADAPTERS = {
         subtitle_show_only_preferred_languages: Boolean(
           settings.subtitleStyle?.showOnlyPreferredLanguages
         ),
-        auto_skip_segment_types: Array.isArray(settings.autoSkipSegmentTypes) ? settings.autoSkipSegmentTypes : [],
+        auto_skip_segment_types: Array.isArray(settings.autoSkipSegmentTypes)
+          ? settings.autoSkipSegmentTypes
+          : [],
         addon_subtitle_startup_mode: String(settings.addonSubtitleStartupMode || "ALL_SUBTITLES"),
         skip_intro_enabled: Boolean(settings.skipIntroEnabled),
         stream_auto_play_next_episode_enabled: Boolean(settings.autoplayNextEpisode),
@@ -1059,8 +1129,13 @@ const FEATURE_ADAPTERS = {
         "stream_auto_play_prefer_bingegroup_next_episode",
         "stream_auto_play_reuse_binge_group",
         "stream_reuse_last_link_enabled",
-        "still_watching_enabled"
-        ,"loading_overlay_enabled","show_player_loading_status","pause_overlay_enabled","parental_guide_enabled","osd_clock_enabled","subtitle_show_only_preferred_languages"
+        "still_watching_enabled",
+        "loading_overlay_enabled",
+        "show_player_loading_status",
+        "pause_overlay_enabled",
+        "parental_guide_enabled",
+        "osd_clock_enabled",
+        "subtitle_show_only_preferred_languages"
       ].forEach((key) => {
         if (booleanOrNull(raw[key]) != null) {
           projected[key] = Boolean(raw[key]);
@@ -1088,8 +1163,12 @@ const FEATURE_ADAPTERS = {
           }
         }
       );
-      if (Array.isArray(raw.auto_skip_segment_types)) projected.auto_skip_segment_types = raw.auto_skip_segment_types;
-      if (stringOrNull(raw.addon_subtitle_startup_mode)) projected.addon_subtitle_startup_mode = String(raw.addon_subtitle_startup_mode).toUpperCase();
+      if (Array.isArray(raw.auto_skip_segment_types))
+        projected.auto_skip_segment_types = raw.auto_skip_segment_types;
+      if (stringOrNull(raw.addon_subtitle_startup_mode))
+        projected.addon_subtitle_startup_mode = String(
+          raw.addon_subtitle_startup_mode
+        ).toUpperCase();
       if (numberOrNull(raw.stream_auto_play_timeout_seconds) != null) {
         projected.stream_auto_play_timeout_seconds = Math.max(
           0,
@@ -1223,10 +1302,20 @@ const FEATURE_ADAPTERS = {
       if (booleanOrNull(raw.skip_intro_enabled) != null) {
         partial.skipIntroEnabled = Boolean(raw.skip_intro_enabled);
       }
-      const playerBooleanFields = { loading_overlay_enabled: "loadingOverlayEnabled", show_player_loading_status: "showPlayerLoadingStatus", pause_overlay_enabled: "pauseOverlayEnabled", parental_guide_enabled: "parentalGuideEnabled", osd_clock_enabled: "osdClockEnabled" };
-      Object.entries(playerBooleanFields).forEach(([key, field]) => { if (booleanOrNull(raw[key]) != null) partial[field] = Boolean(raw[key]); });
-      if (Array.isArray(raw.auto_skip_segment_types)) partial.autoSkipSegmentTypes = raw.auto_skip_segment_types;
-      if (stringOrNull(raw.addon_subtitle_startup_mode)) partial.addonSubtitleStartupMode = String(raw.addon_subtitle_startup_mode).toUpperCase();
+      const playerBooleanFields = {
+        loading_overlay_enabled: "loadingOverlayEnabled",
+        show_player_loading_status: "showPlayerLoadingStatus",
+        pause_overlay_enabled: "pauseOverlayEnabled",
+        parental_guide_enabled: "parentalGuideEnabled",
+        osd_clock_enabled: "osdClockEnabled"
+      };
+      Object.entries(playerBooleanFields).forEach(([key, field]) => {
+        if (booleanOrNull(raw[key]) != null) partial[field] = Boolean(raw[key]);
+      });
+      if (Array.isArray(raw.auto_skip_segment_types))
+        partial.autoSkipSegmentTypes = raw.auto_skip_segment_types;
+      if (stringOrNull(raw.addon_subtitle_startup_mode))
+        partial.addonSubtitleStartupMode = String(raw.addon_subtitle_startup_mode).toUpperCase();
       if (booleanOrNull(raw.stream_auto_play_next_episode_enabled) != null) {
         partial.autoplayNextEpisode = Boolean(raw.stream_auto_play_next_episode_enabled);
       }
@@ -1318,7 +1407,10 @@ const FEATURE_ADAPTERS = {
       const settings = PlayerSettingsStore.getForProfile(profileId);
       return {
         trailer_enabled: Boolean(settings.trailerAutoplay),
-        trailer_delay_seconds: Math.min(15, Math.max(0, Number(settings.trailerDelaySeconds ?? 7) || 0))
+        trailer_delay_seconds: Math.min(
+          15,
+          Math.max(0, Number(settings.trailerDelaySeconds ?? 7) || 0)
+        )
       };
     },
     project(rawFeature = {}) {
@@ -1327,19 +1419,30 @@ const FEATURE_ADAPTERS = {
       if (booleanOrNull(raw.trailer_enabled) != null) {
         projected.trailer_enabled = Boolean(raw.trailer_enabled);
       }
-      if (numberOrNull(raw.trailer_delay_seconds) != null) projected.trailer_delay_seconds = Math.min(15, Math.max(0, Math.trunc(Number(raw.trailer_delay_seconds))));
+      if (numberOrNull(raw.trailer_delay_seconds) != null)
+        projected.trailer_delay_seconds = Math.min(
+          15,
+          Math.max(0, Math.trunc(Number(raw.trailer_delay_seconds)))
+        );
       return projected;
     },
     import(profileId, rawFeature = {}) {
       const raw = normalizeFeaturePayload(rawFeature);
-      if (booleanOrNull(raw.trailer_enabled) == null && numberOrNull(raw.trailer_delay_seconds) == null) {
+      if (
+        booleanOrNull(raw.trailer_enabled) == null &&
+        numberOrNull(raw.trailer_delay_seconds) == null
+      ) {
         return false;
       }
       PlayerSettingsStore.setForProfile(
         profileId,
         {
-          ...(booleanOrNull(raw.trailer_enabled) != null ? { trailerAutoplay: Boolean(raw.trailer_enabled) } : {}),
-          ...(numberOrNull(raw.trailer_delay_seconds) != null ? { trailerDelaySeconds: Number(raw.trailer_delay_seconds) } : {})
+          ...(booleanOrNull(raw.trailer_enabled) != null
+            ? { trailerAutoplay: Boolean(raw.trailer_enabled) }
+            : {}),
+          ...(numberOrNull(raw.trailer_delay_seconds) != null
+            ? { trailerDelaySeconds: Number(raw.trailer_delay_seconds) }
+            : {})
         },
         { silentSync: true }
       );
@@ -1718,7 +1821,10 @@ const FEATURE_ADAPTERS = {
       return normalizeFeaturePayload(rawFeature);
     },
     import(profileId, rawFeature = {}) {
-      return TrackPreferencesStore.importFeaturePayload(normalizeFeaturePayload(rawFeature), profileId);
+      return TrackPreferencesStore.importFeaturePayload(
+        normalizeFeaturePayload(rawFeature),
+        profileId
+      );
     }
   },
   debrid_settings: {
@@ -1875,9 +1981,11 @@ const SUPPORTED_FEATURE_NAMES = Object.keys(FEATURE_ADAPTERS);
 
 function buildComparableFeaturesFromBlob(blob = {}) {
   return SUPPORTED_FEATURE_NAMES.reduce((accumulator, featureName) => {
-    accumulator[featureName] = FEATURE_ADAPTERS[featureName].project(
+    const featurePayload = withoutExcludedProfileSettingsKeys(
+      featureName,
       blob?.features?.[featureName] || {}
     );
+    accumulator[featureName] = FEATURE_ADAPTERS[featureName].project(featurePayload);
     return accumulator;
   }, {});
 }
@@ -1885,7 +1993,8 @@ function buildComparableFeaturesFromBlob(blob = {}) {
 function buildComparableFeaturesFromLocal(profileId) {
   return SUPPORTED_FEATURE_NAMES.reduce((accumulator, featureName) => {
     const exported = FEATURE_ADAPTERS[featureName].export(profileId);
-    accumulator[featureName] = FEATURE_ADAPTERS[featureName].project(exported);
+    const featurePayload = withoutExcludedProfileSettingsKeys(featureName, exported);
+    accumulator[featureName] = FEATURE_ADAPTERS[featureName].project(featurePayload);
     return accumulator;
   }, {});
 }
@@ -1950,10 +2059,11 @@ async function pullRemoteBlob(profileId) {
 function applyRemoteBlob(profileId, blob) {
   let applied = false;
   SUPPORTED_FEATURE_NAMES.forEach((featureName) => {
-    const didApply = FEATURE_ADAPTERS[featureName].import(
-      profileId,
+    const featurePayload = withoutExcludedProfileSettingsKeys(
+      featureName,
       blob?.features?.[featureName] || {}
     );
+    const didApply = FEATURE_ADAPTERS[featureName].import(profileId, featurePayload);
     if (didApply) {
       applied = true;
     }

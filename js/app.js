@@ -11,6 +11,7 @@ import { DeviceSessionRegistration } from "./core/auth/deviceSessionRegistration
 import { ProfileManager } from "./core/profile/profileManager.js";
 import { ProfileSyncService } from "./core/profile/profileSyncService.js";
 import { StartupSyncService } from "./core/profile/startupSyncService.js";
+import { ProviderCredentialSyncService } from "./core/profile/providerCredentialSyncService.js";
 import { ThemeManager } from "./ui/theme/themeManager.js";
 import { renderAppShell } from "./bootstrap/renderAppShell.js";
 import { renderAddonRemotePage } from "./bootstrap/renderAddonRemotePage.js";
@@ -306,6 +307,7 @@ function setupWebOsAppLifecycle() {
       return;
     }
     void DeviceSessionRegistration.requestForegroundRegistration();
+    ProviderCredentialSyncService.requestForegroundPull();
     const current = Router.getCurrent();
     if (!current) {
       return;
@@ -384,6 +386,40 @@ function setupWebOsAppLifecycle() {
   installNativeCallback(globalThis.PalmSystem, "PalmSystem", "ondeactivate");
 }
 
+function setupProviderCredentialForegroundLifecycle() {
+  let wasBackgrounded =
+    document.visibilityState === "hidden" || document.webkitHidden === true;
+  const requestAfterBackground = () => {
+    if (!wasBackgrounded) return;
+    wasBackgrounded = false;
+    ProviderCredentialSyncService.requestForegroundPull();
+  };
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      wasBackgrounded = true;
+    } else if (document.visibilityState === "visible") {
+      requestAfterBackground();
+    }
+  });
+  document.addEventListener("webkitvisibilitychange", () => {
+    if (document.webkitHidden === true) {
+      wasBackgrounded = true;
+    } else {
+      requestAfterBackground();
+    }
+  });
+  window.addEventListener("pagehide", () => {
+    wasBackgrounded = true;
+  });
+  window.addEventListener("pageshow", (event) => {
+    if (event?.persisted) requestAfterBackground();
+  });
+  window.addEventListener("blur", () => {
+    wasBackgrounded = true;
+  });
+  window.addEventListener("focus", requestAfterBackground);
+}
+
 async function bootstrapApp() {
   markBootStage("Rendering application shell");
   renderAppShell();
@@ -399,6 +435,7 @@ async function bootstrapApp() {
   PlayerController.init();
 
   FocusEngine.init();
+  setupProviderCredentialForegroundLifecycle();
   setupWebOsAppLifecycle();
 
   ThemeManager.apply();
@@ -411,11 +448,13 @@ async function bootstrapApp() {
   AuthManager.subscribe((state) => {
     if (state === AuthState.LOADING) {
       StartupSyncService.stop();
+      ProviderCredentialSyncService.cancelForegroundPull();
       return;
     }
 
     if (state === AuthState.SIGNED_OUT) {
       StartupSyncService.stop();
+      ProviderCredentialSyncService.cancelForegroundPull();
       hasSelectedProfileThisSession = false;
       const shouldBypassQr = Boolean(LocalStore.get(GUEST_QR_BYPASS_KEY, false));
       if (isSignedOutRouteAllowed()) {

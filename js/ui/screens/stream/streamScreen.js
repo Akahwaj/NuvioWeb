@@ -12,7 +12,10 @@ import {
 } from "../../../core/streams/streamAutoPlaySelector.js";
 import { buildStreamResumeIdentity } from "../../../core/streams/streamResumeIdentity.js";
 import { DirectDebridResolver } from "../../../core/debrid/directDebridResolver.js";
-import { DirectDebridStreamPreparer } from "../../../core/debrid/directDebridStreamPreparer.js";
+import {
+  DirectDebridStreamPreparer,
+  directDebridPreparationKey
+} from "../../../core/debrid/directDebridStreamPreparer.js";
 import { DebridStreamPresentation } from "../../../core/debrid/directDebridStreamPresentation.js";
 import { WebOsEngineFsResolver } from "../../../core/p2p/webosEngineFsResolver.js";
 import { TizenStreamingServerResolver } from "../../../core/p2p/tizenStreamingServerResolver.js";
@@ -803,25 +806,32 @@ export const StreamScreen = {
       }
       const season = this.params?.season == null ? null : Number(this.params.season);
       const episode = this.params?.episode == null ? null : Number(this.params.episode);
+      const playerSettings = PlayerSettingsStore.get();
+      const installedAddonNames = new Set(
+        (addonRepository.getCachedInstalledAddons() || [])
+          .map((addon) => String(addon?.displayName || addon?.name || "").trim())
+          .filter(Boolean)
+      );
       void DirectDebridStreamPreparer.prepare(this.streams, {
         season,
         episode,
+        playerSettings,
+        installedAddonNames,
         onPrepared: (original, prepared) => {
           if (!this.container || Router.getCurrent() !== "stream" || token !== this.loadToken) {
             return;
           }
-          const keyFor = (stream) =>
-            [
-              stream.clientResolve?.service || "",
-              stream.clientResolve?.infoHash || stream.infoHash || "",
-              stream.clientResolve?.fileIdx ?? stream.fileIdx ?? "",
-              stream.clientResolve?.filename || stream.behaviorHints?.filename || "",
-              stream.name || "",
-              stream.title || ""
-            ].join("|");
-          const originalKey = keyFor(original);
+          const originalKey = directDebridPreparationKey(original);
           this.streams = this.streams.map((stream) =>
-            keyFor(stream) === originalKey ? { ...stream, ...prepared } : stream
+            directDebridPreparationKey(stream) === originalKey
+              ? {
+                  ...stream,
+                  ...prepared,
+                  addonName: stream.addonName,
+                  addonLogo: stream.addonLogo,
+                  badges: stream.badges
+                }
+              : stream
           );
           this.requestRender();
         }

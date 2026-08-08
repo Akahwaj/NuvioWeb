@@ -2669,4 +2669,18 @@
     <string name="licenses_attributions_torbox_title">TorBox</string>
     <string name="licenses_attributions_torbox_body">Nuvio; hesap doğrulama, bulut kütüphanesine erişim, önbellek kontrolü ve bulut oynatma özellikleri için TorBox\'a bağlanır. Nuvio\'nun TorBox ile herhangi bir ortaklığı veya resmi bağı yoktur.</string>
     <string name="update_error_check_failed">Güncelleme kontrolü başarısız oldu</string>
+    <string name="debrid_formatter_reset_value">Sıfırla</string>
+    <string name="debrid_selection_count_value">{{count}} seçildi</string>
+    <string name="debrid_service_degraded">Debrid hizmeti şu anda bozulmuş durumda. Daha sonra tekrar deneyin veya başka bir kaynak seçin.</string>
+    <string name="debrid_stream_description_template_prompt">Akış açıklama modeli</string>
+    <string name="debrid_stream_description_template_subtitle">Direct Debrid kaynak ayrıntılarını oluşturmak için kullanılan model.</string>
+    <string name="debrid_stream_description_template_title">Akış açıklama modeli</string>
+    <string name="debrid_stream_name_template_prompt">Akış adı modeli</string>
+    <string name="debrid_stream_name_template_subtitle">Direct Debrid kaynak adlarını oluşturmak için kullanılan model.</string>
+    <string name="debrid_stream_name_template_title">Akış adı modeli</string>
+    <string name="cloud_library_search_label">Bulut kütüphanesinde ara</string>
+    <string name="cloud_library_search_placeholder">Dosyaları arayın</string>
+    <string name="cloud_library_error_provider_unavailable">%1$s için bulut kütüphanesi kullanılamıyor.</string>
+    <string name="cloud_library_error_disabled">Bulut kütüphanesi kapalı.</string>
+    <string name="cloud_library_search_clear">Aramayı temizle</string>
 </resources>
