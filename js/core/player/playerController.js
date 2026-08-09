@@ -105,6 +105,7 @@ export const PlayerController = {
   desiredAvPlayAudioTrackIndex: -1,
   desiredAvPlayAudioTrackUntil: 0,
   pendingAvPlaySubtitleTrackIndex: -1,
+  pendingAvPlaySubtitleReactivation: false,
   desiredAvPlaySubtitleTrackIndex: -1,
   desiredAvPlaySubtitleTrackUntil: 0,
   avplaySubtitleSelectionToken: 0,
@@ -1271,23 +1272,51 @@ export const PlayerController = {
   },
 
   getCurrentAvPlaySubtitleTrackIndex() {
-    const avplay = this.getAvPlay();
-    if (
-      !avplay ||
-      typeof avplay.getCurrentStreamInfo !== "function" ||
-      this.avplaySubtitlesSilent
-    ) {
+    if (this.avplaySubtitlesSilent) {
       return -1;
+    }
+    return this.getAvPlaySubtitleDiagnosticSnapshot().canonicalTrackIndex;
+  },
+
+  getAvPlaySubtitleDiagnosticSnapshot() {
+    const avplay = this.getAvPlay();
+    const snapshot = {
+      state: this.getAvPlayState(),
+      rawTrackIndex: -1,
+      canonicalTrackIndex: -1
+    };
+    if (!avplay || typeof avplay.getCurrentStreamInfo !== "function") {
+      return snapshot;
     }
     try {
       const streams = avplay.getCurrentStreamInfo();
       const text = Array.isArray(streams)
         ? streams.find((track) => this.normalizeAvPlayTrackType(track?.type) === "TEXT")
         : null;
-      return this.resolveAvPlaySubtitleTrackIndex(Number(text?.index));
-    } catch (_) {
-      return -1;
+      const rawTrackIndex = Number(text?.index);
+      snapshot.rawTrackIndex = Number.isFinite(rawTrackIndex) ? rawTrackIndex : -1;
+      snapshot.canonicalTrackIndex = this.resolveAvPlaySubtitleTrackIndex(rawTrackIndex);
+    } catch (error) {
+      snapshot.error = error?.message || String(error || "");
     }
+    return snapshot;
+  },
+
+  logAvPlaySubtitleDiagnostic(stage, detail = {}) {
+    if (!Platform.isTizen() || !this.isUsingAvPlay()) {
+      return;
+    }
+    console.warn("[Nuvio AVPlay subtitle trace]", {
+      stage,
+      ...detail,
+      current: this.getAvPlaySubtitleDiagnosticSnapshot(),
+      outputDisabled: Boolean(this.avplaySubtitlesSilent),
+      renderMode: this.avplaySubtitleRenderMode,
+      nativeRendering: Boolean(this.avplayNativeSubtitleRendering),
+      selectedTrackIndex: Number(this.selectedAvPlaySubtitleTrackIndex),
+      pendingTrackIndex: Number(this.pendingAvPlaySubtitleTrackIndex),
+      desiredTrackIndex: Number(this.desiredAvPlaySubtitleTrackIndex)
+    });
   },
 
   clearAvPlayExternalSubtitlePath() {
@@ -1325,7 +1354,7 @@ export const PlayerController = {
 
   trySelectAvPlaySubtitleTrackIndex(
     trackIndex,
-    { nudge = false, renderMode = this.avplaySubtitleRenderMode } = {}
+    { nudge = false, reactivate = false, renderMode = this.avplaySubtitleRenderMode } = {}
   ) {
     const avplay = this.getAvPlay();
     const targetIndex = Number(trackIndex);
@@ -1346,11 +1375,13 @@ export const PlayerController = {
       return false;
     }
     const mode = normalizeAvPlaySubtitleRenderMode(renderMode);
+    // Keep the proven 0.3.31 decoder re-arm for startup and ordinary track
+    // changes. When returning from Off/an addon, keep the requested renderer
+    // active throughout selection so the reactivation retries do not switch
+    // AVPlay back through the state that already failed on affected TVs.
+    const preselectSilent = reactivate ? mode === "html" : mode === "native";
     try {
-      // Keep Samsung's native renderer enabled while switching internal TEXT
-      // tracks. HTML mode stays silent so subtitle callbacks can be rendered
-      // by the app overlay instead.
-      avplay.setSilentSubtitle?.(mode === "html");
+      avplay.setSilentSubtitle?.(preselectSilent);
     } catch (_) {
       // Track selection can still succeed when this toggle is unavailable.
     }
@@ -1368,6 +1399,13 @@ export const PlayerController = {
         error: error?.message || String(error || "")
       });
       this.applyAvPlaySubtitleRenderMode(mode);
+      this.logAvPlaySubtitleDiagnostic("select-error", {
+        targetIndex,
+        mode,
+        reactivate: Boolean(reactivate),
+        preselectSilent,
+        error: error?.message || String(error || "")
+      });
       return false;
     }
     this.applyAvPlaySubtitleRenderMode(mode);
@@ -1379,6 +1417,12 @@ export const PlayerController = {
     logTizenAvPlayDebug("Tizen AVPlay subtitle selection requested", {
       state: this.getAvPlayState(),
       targetIndex
+    });
+    this.logAvPlaySubtitleDiagnostic("select-issued", {
+      targetIndex,
+      mode,
+      reactivate: Boolean(reactivate),
+      preselectSilent
     });
     return true;
   },
@@ -1398,7 +1442,11 @@ export const PlayerController = {
       this.applyAvPlaySubtitleRenderMode(renderMode);
       return true;
     }
-    const attempted = this.trySelectAvPlaySubtitleTrackIndex(canonicalIndex, { nudge, renderMode });
+    const attempted = this.trySelectAvPlaySubtitleTrackIndex(canonicalIndex, {
+      nudge,
+      reactivate: force,
+      renderMode
+    });
     return attempted || this.getCurrentAvPlaySubtitleTrackIndex() === canonicalIndex;
   },
 
@@ -1704,6 +1752,7 @@ export const PlayerController = {
     const targetIndex = Number(trackIndex);
     if (!Number.isFinite(targetIndex) || targetIndex < 0) {
       this.pendingAvPlaySubtitleTrackIndex = -1;
+      this.pendingAvPlaySubtitleReactivation = false;
       this.desiredAvPlaySubtitleTrackIndex = -1;
       this.desiredAvPlaySubtitleTrackUntil = Date.now() + 5000;
       this.clearAvPlayExternalSubtitlePath();
@@ -1717,6 +1766,9 @@ export const PlayerController = {
       this.avplayNativeSubtitleRendering = false;
       this.selectedAvPlaySubtitleTrackIndex = -1;
       this.selectedWebOsEmbeddedSubtitleTrackIndex = -1;
+      this.logAvPlaySubtitleDiagnostic("disabled", {
+        selectionToken
+      });
       this.emitVideoEvent("avplaytrackschanged", { playbackEngine: this.playbackEngine });
       return true;
     }
@@ -1740,8 +1792,16 @@ export const PlayerController = {
       shouldDeferUntilPlay,
       subtitleTracks: this.avplaySubtitleTracks
     });
+    this.logAvPlaySubtitleDiagnostic("requested", {
+      selectionToken,
+      targetIndex: canonicalIndex,
+      mode: this.avplaySubtitleRenderMode,
+      reactivate: shouldForceSubtitleReactivation,
+      canApplyNow
+    });
     if (!canApplyNow || shouldDeferUntilPlay) {
       this.pendingAvPlaySubtitleTrackIndex = canonicalIndex;
+      this.pendingAvPlaySubtitleReactivation = shouldForceSubtitleReactivation;
       this.selectedAvPlaySubtitleTrackIndex = canonicalIndex;
       this.avplaySubtitlesSilent = false;
       this.selectedWebOsEmbeddedSubtitleTrackIndex = -1;
@@ -1752,12 +1812,14 @@ export const PlayerController = {
     try {
       if (
         !this.trySelectAvPlaySubtitleTrackIndex(canonicalIndex, {
+          reactivate: shouldForceSubtitleReactivation,
           renderMode: this.avplaySubtitleRenderMode
         })
       ) {
         throw new Error("setSelectTrack failed");
       }
       this.pendingAvPlaySubtitleTrackIndex = -1;
+      this.pendingAvPlaySubtitleReactivation = false;
     } catch (error) {
       logTizenAvPlayDebug("Tizen AVPlay subtitle track request failed", {
         state,
@@ -1793,6 +1855,7 @@ export const PlayerController = {
 
   applyPendingAvPlaySubtitleTrackSelection() {
     const pendingIndex = Number(this.pendingAvPlaySubtitleTrackIndex);
+    const pendingReactivation = Boolean(this.pendingAvPlaySubtitleReactivation);
     const desiredIndex = Number(this.desiredAvPlaySubtitleTrackIndex);
     const desiredActive =
       Number.isFinite(desiredIndex) &&
@@ -1815,11 +1878,17 @@ export const PlayerController = {
     }
 
     try {
-      if (!this.retryAvPlaySubtitleTrackSelection(canonicalIndex)) {
+      if (
+        !this.retryAvPlaySubtitleTrackSelection(canonicalIndex, {
+          force: pendingReactivation,
+          renderMode: this.avplaySubtitleRenderMode
+        })
+      ) {
         throw new Error("setSelectTrack failed");
       }
       if (Number.isFinite(pendingIndex) && pendingIndex === canonicalIndex) {
         this.pendingAvPlaySubtitleTrackIndex = -1;
+        this.pendingAvPlaySubtitleReactivation = false;
       }
       this.selectedAvPlaySubtitleTrackIndex = canonicalIndex;
       this.desiredAvPlaySubtitleTrackIndex = canonicalIndex;
@@ -1863,6 +1932,7 @@ export const PlayerController = {
         // Ignore subtitle mute/unmute failures.
       }
       this.pendingAvPlaySubtitleTrackIndex = -1;
+      this.pendingAvPlaySubtitleReactivation = false;
       this.desiredAvPlaySubtitleTrackIndex = -1;
       this.desiredAvPlaySubtitleTrackUntil = 0;
       this.avplayNativeSubtitleRendering = false;
@@ -2219,6 +2289,7 @@ export const PlayerController = {
     this.desiredAvPlayAudioTrackIndex = -1;
     this.desiredAvPlayAudioTrackUntil = 0;
     this.pendingAvPlaySubtitleTrackIndex = -1;
+    this.pendingAvPlaySubtitleReactivation = false;
     this.desiredAvPlaySubtitleTrackIndex = -1;
     this.desiredAvPlaySubtitleTrackUntil = 0;
     this.avplaySubtitleSelectionToken = Number(this.avplaySubtitleSelectionToken || 0) + 1;

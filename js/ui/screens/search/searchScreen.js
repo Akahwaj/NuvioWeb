@@ -447,7 +447,10 @@ export const SearchScreen = {
     this.rowScrollLeftByKey = {};
     this.rowFocusedIndexByKey = {};
     this.restoredFocusedDescriptor = null;
+    // TV platforms provide voice input through their native keyboard/IME, not
+    // through a supported Web Speech API that an in-app button can start.
     this.voiceSearchSupported =
+      Platform.isBrowser() &&
       typeof window !== "undefined" &&
       (typeof window.SpeechRecognition === "function" ||
         typeof window.webkitSpeechRecognition === "function");
@@ -862,7 +865,7 @@ export const SearchScreen = {
           pillIconOnly: Boolean(this.pillIconOnly)
         })}
         <main class="home-main search-content">
-          <section class="search-header${this.layoutPrefs?.discoverLocation === "in_search" ? "" : " no-discover"}">
+          <section class="search-header${this.layoutPrefs?.discoverLocation === "in_search" ? "" : " no-discover"}${this.voiceSearchSupported ? "" : " no-voice"}">
             ${
               this.layoutPrefs?.discoverLocation === "in_search"
                 ? `
@@ -872,13 +875,17 @@ export const SearchScreen = {
             `
                 : ""
             }
-            <button
+            ${
+              this.voiceSearchSupported
+                ? `<button
               class="search-voice-btn focusable${this.voiceSearchActive ? " listening" : ""}"
               data-action="openVoice"
               aria-label="Voice search"
             >
               <span class="search-action-icon material-icons" aria-hidden="true">mic</span>
-            </button>
+            </button>`
+                : ""
+            }
             <input
               id="searchInput"
               class="search-input-field focusable"

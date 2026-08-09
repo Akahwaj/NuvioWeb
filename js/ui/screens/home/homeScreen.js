@@ -7841,6 +7841,11 @@ export const HomeScreen = {
         if (!target || !this.container?.contains(target) || target.classList.contains("focused")) {
           return;
         }
+        // Match Android TV: while the expanded sidebar owns navigation, pointer
+        // hover must not transfer focus to content behind it.
+        if (this.sidebarExpanded || this.isSidebarFocusActive()) {
+          return;
+        }
         this.setFocusedNode(target, { suppressDelegatedFocus: true });
         if (this.isMainNode(target)) {
           this.lastMainFocus = target;
@@ -7855,6 +7860,14 @@ export const HomeScreen = {
         const main = this.getHomeViewport();
         const target = event?.target;
         if (!(target instanceof HTMLElement) || !main?.contains(target)) {
+          return;
+        }
+        // LG Magic Remote wheel events scroll the hovered element natively.
+        // Consume them while the sidebar owns navigation so the background
+        // remains fixed, matching Android TV's blocked content input.
+        if (this.sidebarExpanded || this.isSidebarFocusActive()) {
+          event.preventDefault?.();
+          event.stopPropagation?.();
           return;
         }
         this.cancelPendingHeroFocus();
@@ -7874,7 +7887,7 @@ export const HomeScreen = {
     this.container.addEventListener("focusin", this.boundHomeFocusInHandler);
     this.container.addEventListener("click", this.boundHomeClickHandler);
     this.container.addEventListener("mouseover", this.boundHomeMouseOverHandler);
-    this.container.addEventListener("wheel", this.boundHomeWheelHandler, { passive: true });
+    this.container.addEventListener("wheel", this.boundHomeWheelHandler, { passive: false });
     this.boundHomeEventContainer = this.container;
   },
 

@@ -317,7 +317,8 @@ function setupWebOsAppLifecycle() {
       if (document.body) {
         document.body.style.removeProperty("display");
       }
-      if (current === "debugConsole") {
+      const shouldReturnHome = !Router.isWebOsResumeRouteRestorable(current);
+      if (shouldReturnHome) {
         await Router.navigate(
           "home",
           {},

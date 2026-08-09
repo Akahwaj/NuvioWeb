@@ -18,6 +18,7 @@ import {
   playableCloudFiles
 } from "../../../core/cloud/cloudLibraryModels.js";
 import { DebridSettingsStore } from "../../../data/local/debridSettingsStore.js";
+import { LibraryPreferencesStore } from "../../../data/local/libraryPreferencesStore.js";
 
 const ALL_KEY = "__all__";
 const MESSAGE_CLEAR_MS = 2400;
@@ -573,12 +574,15 @@ export class LibraryController {
       return;
     }
 
+    const persistedListKey = LibraryPreferencesStore.getLastSelectedListKey();
     const nextSelectedListKey =
       sourceMode !== LibrarySourceMode.LOCAL
         ? this.state.selectedListKey &&
           listTabs.some((item) => item.key === this.state.selectedListKey)
           ? this.state.selectedListKey
-          : listTabs[0]?.key || null
+          : listTabs.some((item) => item.key === persistedListKey)
+            ? persistedListKey
+            : listTabs[0]?.key || null
         : null;
 
     const availableSortOptions =
@@ -1012,6 +1016,7 @@ export class LibraryController {
   }
 
   selectList(key) {
+    LibraryPreferencesStore.setLastSelectedListKey(key);
     this.setState({
       selectedListKey: key,
       selectedTypeKey: ALL_KEY,

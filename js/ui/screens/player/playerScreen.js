@@ -2758,7 +2758,10 @@ export const PlayerScreen = {
     const id = imdbItemId || baseItemId || rawItemId || "";
     const currentStream = this.getCurrentStreamCandidate();
     const rawStream = currentStream?.raw || currentStream || {};
-    const behaviorHints = rawStream?.behaviorHints || {};
+    const behaviorHints = {
+      ...(rawStream?.behaviorHints || {}),
+      ...(currentStream?.behaviorHints || {})
+    };
 
     let videoId = null;
     if (type === "series") {
@@ -2787,9 +2790,24 @@ export const PlayerScreen = {
       episode: this.params?.episode ?? null,
       title: this.params?.playerTitle || this.params?.itemTitle || null,
       year: this.params?.playerReleaseYear || this.params?.year || null,
-      videoHash: behaviorHints.videoHash || rawStream.videoHash || this.params?.videoHash || null,
-      videoSize: behaviorHints.videoSize || rawStream.videoSize || this.params?.videoSize || null,
-      filename: behaviorHints.filename || rawStream.filename || this.params?.filename || null
+      videoHash:
+        behaviorHints.videoHash ||
+        currentStream?.videoHash ||
+        rawStream.videoHash ||
+        this.params?.videoHash ||
+        null,
+      videoSize:
+        behaviorHints.videoSize ||
+        currentStream?.videoSize ||
+        rawStream.videoSize ||
+        this.params?.videoSize ||
+        null,
+      filename:
+        behaviorHints.filename ||
+        currentStream?.filename ||
+        rawStream.filename ||
+        this.params?.filename ||
+        null
     };
   },
 
@@ -14483,6 +14501,11 @@ export const PlayerScreen = {
         value: formatSubtitleDelay(this.subtitleDelayMs)
       },
       {
+        id: "resetDelay",
+        label: t("subtitle_delay_reset", {}, "Reset Delay"),
+        value: ""
+      },
+      {
         id: "fontSize",
         label: t("subtitle_style_font_size", {}, "Font Size"),
         value: `${normalizeSubtitleFontSize(style.fontSize)}%`
@@ -14569,6 +14592,8 @@ export const PlayerScreen = {
         SUBTITLE_DELAY_MIN_MS,
         SUBTITLE_DELAY_MAX_MS
       );
+    } else if (controlId === "resetDelay") {
+      this.subtitleDelayMs = 0;
     } else if (controlId === "fontSize") {
       style.fontSize = normalizeSubtitleFontSize(
         Number(style.fontSize || 120) + delta * SUBTITLE_FONT_STEP

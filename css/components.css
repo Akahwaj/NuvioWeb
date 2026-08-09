@@ -1070,6 +1070,17 @@ button:focus-visible {
   grid-column: 2;
 }
 
+.profile-pin-delete-icon {
+  width: 1.15em;
+  height: 1.15em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
 .profile-pin-key.focused,
 .profile-pin-key:focus {
   border-color: #fff;
@@ -2587,7 +2598,8 @@ button:focus-visible {
   margin-left: 0;
 }
 
-.home-shell.home-modern-sidebar-enabled .home-main {
+.home-shell.home-modern-sidebar-enabled .home-main,
+.home-shell.has-modern-sidebar .home-main {
   margin-left: 0;
 }
 
@@ -3140,6 +3152,14 @@ button:focus-visible {
   grid-template-columns: 110px minmax(0, 1fr);
 }
 
+.search-header.no-voice {
+  grid-template-columns: 110px minmax(0, 1fr);
+}
+
+.search-header.no-discover.no-voice {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .search-discover-btn,
 .search-voice-btn {
   width: 110px;
@@ -3267,6 +3287,11 @@ button:focus-visible {
   width: 100%;
   margin-left: 0;
   padding: 24px 48px 32px;
+}
+
+.discover-shell.discover-root-route:not(.has-modern-sidebar):not(.has-collapsible-sidebar)
+  .discover-main {
+  margin-left: var(--legacy-sidebar-rail-width);
 }
 
 .discover-content {
@@ -16217,8 +16242,8 @@ html[data-card-depth="true"][data-card-depth-trailers="true"] .detail-trailer-ca
 }
 
 .series-primary-btn.focused {
-  background: var(--focus-bg);
-  color: var(--text-color);
+  background: #ffffff;
+  color: #000000;
   box-shadow: 0 0 0 4px var(--detail-focus-ring);
   transform: none;
 }
@@ -20833,8 +20858,8 @@ html[data-card-depth="true"][data-card-depth-trailers="true"] .detail-trailer-ca
 }
 
 .series-primary-btn.focused {
-  background: var(--focus-bg);
-  color: var(--text-color);
+  background: #ffffff;
+  color: #000000;
   border-color: var(--detail-focus-ring);
   transform: none;
 }

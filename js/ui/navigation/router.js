@@ -60,6 +60,9 @@ const TIZEN_ROUTE_RETURN_BACK_GUARD_MS = 700;
 const WEBOS_NON_RESTORABLE_ROUTES = new Set([
   ...NON_BACKSTACK_ROUTES,
   "debugConsole",
+  "plugin",
+  "plugins",
+  "catalogOrder",
   "player",
   "stream"
 ]);
@@ -280,12 +283,19 @@ export const Router = {
     return true;
   },
 
+  isWebOsResumeRouteRestorable(routeName = this.current) {
+    const route = String(routeName || "").trim();
+    return Boolean(
+      route && this.routes[route] && !WEBOS_NON_RESTORABLE_ROUTES.has(route)
+    );
+  },
+
   persistWebOsResumeRoute(routeName = this.current, params = this.currentParams) {
     if (!Platform.isWebOS()) {
       return;
     }
     const route = String(routeName || "").trim();
-    if (!route || !this.routes[route] || WEBOS_NON_RESTORABLE_ROUTES.has(route)) {
+    if (!this.isWebOsResumeRouteRestorable(route)) {
       LocalStore.remove(WEBOS_RESUME_ROUTE_KEY);
       return;
     }
@@ -312,8 +322,7 @@ export const Router = {
     const savedAt = Number(snapshot.savedAt || 0);
     if (
       !route ||
-      !this.routes[route] ||
-      WEBOS_NON_RESTORABLE_ROUTES.has(route) ||
+      !this.isWebOsResumeRouteRestorable(route) ||
       !Number.isFinite(savedAt) ||
       Date.now() - savedAt > WEBOS_RESUME_ROUTE_TTL_MS
     ) {
