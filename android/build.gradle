@@ -1,5 +1,4 @@
-// Top-level build file
-top-level build file for the Android bootstrap project.
+// Top-level build file for the AnimeWorld Android bootstrap project.
 
 plugins {
     id 'com.android.application' version '8.5.2' apply false
