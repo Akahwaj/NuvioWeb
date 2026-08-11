@@ -1,0 +1,10 @@
+# Android (bootstrap APK)
+*.iml
+.gradle/
+local.properties
+build/
+android/app/build/
+android/.gradle/
+android/local.properties
+android/build/
+android/captures/
