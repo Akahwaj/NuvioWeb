@@ -1,0 +1,36 @@
+name: AnimeWorld
+options:
+  bundleIdPrefix: com.akahwaj
+  deploymentTarget:
+    iOS: "15.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+
+targets:
+  AnimeWorld:
+    type: application
+    platform: iOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: AnimeWorld
+        excludes:
+          - "Assets.xcassets/AppIcon.appiconset/README.md"
+      # Blue folder reference so the offline web bundle keeps its structure
+      # inside the app bundle (web/index.html, web/js/..., web/css/...).
+      - path: web
+        type: folder
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.akahwaj.animeworld
+        PRODUCT_NAME: AnimeWorld
+        INFOPLIST_FILE: AnimeWorld/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1,2" # 1 = iPhone, 2 = iPad
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        IPHONEOS_DEPLOYMENT_TARGET: "15.0"
